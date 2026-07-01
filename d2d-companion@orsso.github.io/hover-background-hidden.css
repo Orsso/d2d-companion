@@ -1,0 +1,5 @@
+#dashtodockContainer .dash-item-container .overview-tile:hover .overview-icon,
+#dashtodockContainer .dash-item-container .show-apps:hover .overview-icon {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}

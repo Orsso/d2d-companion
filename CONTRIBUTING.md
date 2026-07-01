@@ -1,0 +1,53 @@
+# Contributing
+
+D2D Companion is a small GNOME Shell extension. Keep changes small and
+readable.
+
+## Setup
+
+Install GNOME Shell development tools, GJS, Node.js, `zip`, and `unzip`, then:
+
+```bash
+npm ci
+make check
+```
+
+`make pack` builds the archive, `make install` installs it locally. The tests
+only cover the pure logic. Anything that touches the dock has to be tried in
+a real session.
+
+## Code Map
+
+- `lib/motion/` has the presets and transform math.
+- `DockIntegration` talks to Dash to Dock.
+- `IconMotionController` handles one dock icon.
+- `LaunchEngine` handles launch clones and repeat timing.
+- `prefs.js` builds the settings window.
+
+Prefer plain functions unless something really owns state or cleanup.
+
+## Adding a Motion Effect
+
+Launch and press effects are small pure functions in
+`lib/motion/transforms.js`. The easiest way to add one is to copy an existing
+one (`bounceSegments()` for a launch effect, an entry of `PRESS_EFFECTS` for
+a press effect) and grep for its name: the enum in `catalog.js`, the nick in
+the schema, the dropdown in `prefs.js`, and a test in
+`tests/transforms.test.js` are the only places to touch.
+
+The preview cards only play the presets, so try a new effect through the
+Custom profile in a real session.
+
+## Reporting a Bug
+
+Please include what you did, what happened, and the output of:
+
+```bash
+gnome-shell --version
+gnome-extensions info dash-to-dock@micxgx.gmail.com
+gnome-extensions info d2d-companion@orsso.github.io
+journalctl --user -b --no-pager | rg 'd2d-companion|JS ERROR|CRITICAL'
+```
+
+Mention whether it also happens with other extensions and custom themes
+disabled. That helps a lot for visual bugs.

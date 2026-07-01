@@ -1,0 +1,30 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install GNOME tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes gjs gnome-shell zip unzip
+      - run: npm ci
+      - run: make check
+      - run: make pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: d2d-companion
+          path: dist/*.shell-extension.zip
+          if-no-files-found: error

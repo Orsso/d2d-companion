@@ -1,0 +1,11 @@
+{
+  "name": "d2d-companion",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint d2d-companion@orsso.github.io tests eslint.config.js"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.1"
+  }
+}

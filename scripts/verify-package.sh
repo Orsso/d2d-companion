@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+archive=${1:?archive path is required}
+contents=$(unzip -Z1 "$archive")
+
+required=(
+    LICENSE
+    README.md
+    extension.js
+    lib/motion/catalog.js
+    lib/motion/pressInteraction.js
+    lib/motion/resolver.js
+    lib/motion/settings.js
+    lib/motion/transforms.js
+    lib/prefs/demoSequence.js
+    lib/prefs/motionPreview.js
+    lib/prefs/settingsEditor.js
+    lib/runtime/deferredLaunchEnds.js
+    lib/runtime/dockIntegration.js
+    lib/runtime/easing.js
+    lib/runtime/iconMotionController.js
+    lib/runtime/launchEngine.js
+    lib/runtime/liveRegistry.js
+    lib/runtime/backgroundStyle.js
+    metadata.json
+    prefs.js
+    schemas/org.gnome.shell.extensions.d2d-companion.gschema.xml
+    hover-background-hidden.css
+    focused-app-background-hidden.css
+)
+
+for path in "${required[@]}"; do
+    if ! unzip -Z1 "$archive" "$path" >/dev/null; then
+        printf 'Missing package file: %s\n' "$path" >&2
+        exit 1
+    fi
+done
+
+while IFS= read -r path; do
+    case "$path" in
+        dist/*|docs/*|node_modules/*|scripts/*|tests/*|*/gschemas.compiled)
+            printf 'Development-only package file: %s\n' "$path" >&2
+            exit 1
+            ;;
+    esac
+done <<<"$contents"

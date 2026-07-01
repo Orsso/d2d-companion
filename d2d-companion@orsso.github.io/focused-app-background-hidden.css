@@ -1,0 +1,6 @@
+#dashtodockContainer .dash-item-container .overview-tile.focused .overview-icon,
+#dashtodockContainer .dash-item-container .overview-tile:focus .overview-icon,
+#dashtodockContainer .dash-item-container .overview-tile:active .overview-icon {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
