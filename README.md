@@ -31,7 +31,8 @@ Other setups may work, but I have not tested them for this release.
 D2D Companion needs [Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/)
 installed and enabled.
 
-Download the `.shell-extension.zip` file from the GitHub release, then run:
+Download the `.shell-extension.zip` file from the
+[GitHub release](https://github.com/Orsso/d2d-companion/releases), then run:
 
 ```bash
 gnome-extensions install --force d2d-companion@orsso.github.io.shell-extension.zip
