@@ -13,14 +13,16 @@ make check
 ```
 
 `make pack` builds the archive, `make install` installs it locally. The tests
-only cover the pure logic. Anything that touches the dock has to be tried in
-a real session.
+only cover the pure logic. Anything that touches the dock or the overview
+dash has to be tried in a real session.
 
 ## Code Map
 
 - `lib/motion/` has the presets and transform math.
+- `MotionSurface` turns one box of icons into controllers.
 - `DockIntegration` talks to Dash to Dock.
-- `IconMotionController` handles one dock icon.
+- `DashIntegration` hooks the built-in overview dash.
+- `IconMotionController` handles one icon.
 - `LaunchEngine` handles launch clones and repeat timing.
 - `prefs.js` builds the settings window.
 

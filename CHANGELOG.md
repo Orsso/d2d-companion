@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-beta.2
+
+- Added motion on the GNOME overview dash: hover, press, and launch.
+- Dash to Dock is now optional.
+- Launch animations play out on the desktop while the app starts.
+- Hid the stock hover tile on the overview dash.
+- Tested on GNOME Shell 49, with and without Dash to Dock.
+
 ## 0.1.0-beta.1
 
 - Added Subtle, Lively, Expressive, and Custom profiles.

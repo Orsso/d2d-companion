@@ -1,18 +1,19 @@
 # D2D Companion
 
-A small extension that animates Dash to Dock with hover zoom, press feedback,
-and launch animations.
+A small extension that animates the GNOME dash with hover zoom, press
+feedback, and launch animations. Dash to Dock is supported out of the box.
 
-It is a companion, not a dock. Dash to Dock does the dock work. This adds
-the motion, and puts everything back when turned off.
+It is a companion, not a dock. The Shell or Dash to Dock does the dock work.
+This adds the motion, and puts everything back when turned off.
 
 ## How it works
 
-Hover and press feedback only listen to signals the dock icons already
+Hover and press feedback only listen to signals the icons already
 emit. The launch animation is the one exception: it overrides
 `AppIcon.animateLaunch` (the stock zoom) through GNOME Shell's official
 `InjectionManager`, and restores it when the extension is disabled.
-Nothing else in the Shell or in Dash to Dock is patched.
+The built-in dash clips its icons; the extension lifts that while it runs
+and puts it back. Nothing else in the Shell or in Dash to Dock is patched.
 
 ## Compatibility
 
@@ -21,6 +22,7 @@ D2D Companion declares support for GNOME Shell 46 to 50.
 This beta was tested with:
 
 - GNOME Shell 46 and 49
+- the overview dash on GNOME Shell 49
 - Dash to Dock 105
 - the standard GNOME Shell theme
 
@@ -28,8 +30,9 @@ Other setups may work, but I have not tested them for this release.
 
 ## Install
 
-D2D Companion needs [Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/)
-installed and enabled.
+Nothing else is required. With
+[Dash to Dock](https://extensions.gnome.org/extension/307/dash-to-dock/)
+enabled, the motion goes to the dock; without it, to the overview dash.
 
 Download the `.shell-extension.zip` file from the
 [GitHub release](https://github.com/Orsso/d2d-companion/releases), then run:

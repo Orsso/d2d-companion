@@ -1,9 +1,9 @@
 {
   "uuid": "d2d-companion@orsso.github.io",
   "name": "D2D Companion",
-  "description": "Hover, press, and launch motion for Dash to Dock.",
+  "description": "Hover, press, and launch motion for the GNOME dash and Dash to Dock.",
   "shell-version": ["46", "47", "48", "49", "50"],
   "url": "https://github.com/Orsso/d2d-companion",
   "settings-schema": "org.gnome.shell.extensions.d2d-companion",
-  "version-name": "0.1.0-beta.1"
+  "version-name": "0.1.0-beta.2"
 }
