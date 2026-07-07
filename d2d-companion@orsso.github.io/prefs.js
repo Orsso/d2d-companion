@@ -124,7 +124,8 @@ export default class D2DCompanionPreferences extends ExtensionPreferences {
         buildAdvancedPage(advanced, controls, editor, settings, state);
 
         // The focused app tile is a Dash to Dock concept.
-        if (!dashToDockEnabled()) {
+        controls.dockPresent = dashToDockEnabled();
+        if (!controls.dockPresent) {
             for (const row of [controls.focusedAppBackground,
                 controls.advancedFocusedAppBackground]) {
                 row.sensitive = false;
@@ -293,10 +294,11 @@ function syncControls(settings, editor, controls, state) {
 
     controls.hoverScale.value = recipe.hover.scale;
     controls.hoverLift.value = recipe.hover.lift;
+    // The stored measurement keeps its last value after the dock is gone.
     applyHoverBudget(
         controls, recipe,
-        settings.get_double('measured-hover-budget'),
-        settings.get_double('measured-icon-size'));
+        controls.dockPresent ? settings.get_double('measured-hover-budget') : 0,
+        controls.dockPresent ? settings.get_double('measured-icon-size') : 0);
     controls.hoverDuration.value = recipe.hover.duration;
     setComboValue(controls.hoverEasing, recipe.hover.easing);
     controls.neighborScale.value = recipe.hover.neighborScale;
@@ -478,7 +480,7 @@ function applyHoverBudget(controls, recipe, budgetPx, iconSize) {
     const liftRow = controls.hoverLift;
 
     if (!(budgetPx > 0) || !(iconSize > 0)) {
-        budgetRow.subtitle = 'No dock measured yet; full motion applies';
+        budgetRow.subtitle = 'No dock to measure (full motion applies)';
         scaleRow.subtitle = 'Outward magnification on hover';
         liftRow.subtitle = 'Outward rise on hover, in pixels';
         return;
