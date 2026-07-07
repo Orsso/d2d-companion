@@ -152,7 +152,9 @@ function buildAdvancedPage(page, controls, editor, settings, state) {
     });
     budgetRow.add_suffix(createHelpButton(
         'Dash to Dock clips icons at the dock edge. Magnification and lift share ' +
-        'the space that is left.'));
+        'the space that is left; a smaller icon size in Dash to Dock usually ' +
+        'leaves more room. The overview dash is not clipped, so the full ' +
+        'values apply there.'));
     controls.budgetRow = budgetRow;
     budgetGroup.add(budgetRow);
     page.add(budgetGroup);
@@ -476,7 +478,7 @@ function applyHoverBudget(controls, recipe, budgetPx, iconSize) {
     const liftRow = controls.hoverLift;
 
     if (!(budgetPx > 0) || !(iconSize > 0)) {
-        budgetRow.subtitle = 'Measured live from your dock and icon size';
+        budgetRow.subtitle = 'No dock measured yet; full motion applies';
         scaleRow.subtitle = 'Outward magnification on hover';
         liftRow.subtitle = 'Outward rise on hover, in pixels';
         return;
@@ -495,9 +497,9 @@ function applyHoverBudget(controls, recipe, budgetPx, iconSize) {
 
     budgetRow.subtitle = `About ${room} px of room per icon, updates with your dock`;
     scaleRow.subtitle = reduced
-        ? `Reduced to fit: ~${scaleUse.toFixed(1)} of ${room} px`
+        ? `Reduced to fit the dock: ~${scaleUse.toFixed(1)} of ${room} px`
         : `Uses ~${scaleUse.toFixed(1)} of ${room} px`;
     liftRow.subtitle = reduced
-        ? `Reduced to fit: ~${liftUse.toFixed(1)} of ${room} px`
+        ? `Reduced to fit the dock: ~${liftUse.toFixed(1)} of ${room} px`
         : `Uses ~${liftUse.toFixed(1)} of ${room} px`;
 }
