@@ -17,7 +17,7 @@ const OWNED_TRANSITIONS = Object.freeze([
 export class IconMotionController {
     #bin;
     #destroyed = false;
-    #dimEffect = null;
+    #dimmed = null;
     #hovered = false;
     #icon;
     #launching = false;
@@ -153,7 +153,7 @@ export class IconMotionController {
             return;
         this.#destroyed = true;
         this.#signalIds = [];
-        this.#dimEffect = null;
+        this.#dimmed = null;
         this.#bin = null;
         this.#icon = null;
         this.#onDestroyed(this);
@@ -286,17 +286,22 @@ export class IconMotionController {
         }
     }
 
-    // Dim is not a transform: apply it as a lazy brightness effect.
+    // A brightness effect would render offscreen and blur the scaled icon.
     #syncDim(dim) {
         if (dim > 0) {
-            if (!this.#dimEffect) {
-                this.#dimEffect = new Clutter.BrightnessContrastEffect();
-                this.#bin.add_effect(this.#dimEffect);
+            if (!this.#dimmed) {
+                this.#dimmed = {
+                    opacity: this.#bin.opacity,
+                    redirect: this.#bin.offscreen_redirect,
+                };
+                // Clutter can go offscreen for plain opacity too.
+                this.#bin.offscreen_redirect = 0;
             }
-            this.#dimEffect.set_brightness(-dim);
-        } else if (this.#dimEffect) {
-            this.#bin.remove_effect(this.#dimEffect);
-            this.#dimEffect = null;
+            this.#bin.opacity = Math.round(this.#dimmed.opacity * (1 - dim));
+        } else if (this.#dimmed) {
+            this.#bin.opacity = this.#dimmed.opacity;
+            this.#bin.offscreen_redirect = this.#dimmed.redirect;
+            this.#dimmed = null;
         }
     }
 

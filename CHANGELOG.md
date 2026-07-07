@@ -4,7 +4,9 @@
 
 - Added Ubuntu Dock support (#1). Thanks to @0xHertz for the report and
   initial patch.
-- Tested with Ubuntu Dock on Ubuntu 24.04 (GNOME Shell 46).
+- Fixed the Dim press effect blurring magnified icons.
+- Tested on GNOME Shell 49, and with Ubuntu Dock on Ubuntu 24.04
+  (GNOME Shell 46).
 
 ## 0.1.0-beta.2
 
