@@ -5,7 +5,10 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {DockPosition} from '../motion/catalog.js';
 import {LiveRegistry} from './liveRegistry.js';
 
-const DASH_TO_DOCK_UUID = 'dash-to-dock@micxgx.gmail.com';
+const DASH_TO_DOCK_UUIDS = [
+    'ubuntu-dock@ubuntu.com',
+    'dash-to-dock@micxgx.gmail.com',
+];
 
 export class DockIntegration {
     #controllerFactory;
@@ -29,18 +32,19 @@ export class DockIntegration {
     }
 
     enable(recipe) {
-        if (this.#registry)
-            return;
+        if (this.#registry) return;
         this.#recipe = recipe;
         this.#registry = new LiveRegistry();
         this.#generation++;
         this.#stateChangedId = Main.extensionManager.connect(
-            'extension-state-changed', (_manager, extension) => {
-                if (extension.uuid !== DASH_TO_DOCK_UUID)
-                    return;
+            'extension-state-changed',
+            (_manager, extension) => {
+                if (!DASH_TO_DOCK_UUIDS.includes(extension.uuid)) return;
+
                 this.#detachManager();
                 this.#attach(++this.#generation);
-            });
+            },
+        );
         this.#attach(this.#generation);
     }
 
@@ -59,13 +63,11 @@ export class DockIntegration {
 
     setRecipe(recipe) {
         this.#recipe = recipe;
-        for (const controller of this.controllers)
-            controller.setRecipe(recipe);
+        for (const controller of this.controllers) controller.setRecipe(recipe);
     }
 
     refreshStyles() {
-        for (const controller of this.controllers)
-            controller.refreshStyle?.();
+        for (const controller of this.controllers) controller.refreshStyle?.();
     }
 
     getController(appIcon) {
@@ -73,10 +75,12 @@ export class DockIntegration {
     }
 
     async #attach(generation) {
-        const extension = Main.extensionManager.lookup(DASH_TO_DOCK_UUID);
+        const extension = this.#getDockExtension();
         if (!extension) {
-            this.#warnOnce('missing-extension',
-                'Dash to Dock is not installed; dock motion is inactive');
+            this.#warnOnce(
+                'missing-extension',
+                'Dash to Dock is not installed; dock motion is inactive',
+            );
             return;
         }
 
@@ -84,31 +88,44 @@ export class DockIntegration {
         try {
             module = await import(`file://${extension.path}/extension.js`);
         } catch (error) {
-            this.#warnOnce('import-failed', `cannot import Dash to Dock: ${error.message}`);
+            this.#warnOnce(
+                'import-failed',
+                `cannot import Dash to Dock: ${error.message}`,
+            );
             return;
         }
 
-        if (generation !== this.#generation || !this.#registry)
-            return;
+        if (generation !== this.#generation || !this.#registry) return;
         if (!module.dockManager) {
-            this.#warnOnce('missing-manager',
-                'Dash to Dock does not expose its manager; dock motion is inactive');
+            this.#warnOnce(
+                'missing-manager',
+                'Dash to Dock does not expose its manager; dock motion is inactive',
+            );
             return;
         }
 
-        this.#manager = module.dockManager;
-        this.#managerSignals = [
-            this.#manager.connect('docks-ready', () => this.#scanDocks()),
-            this.#manager.connect('destroy', () => this.#detachManager()),
-        ];
+        const manager =
+            module.dockManager ??
+            module.DockManager ??
+            module.default?.dockManager ??
+            module.default?.DockManager ??
+            null;
+
+        if (!manager) {
+            this.#warnOnce(
+                'missing-manager',
+                'Dash to Dock does not expose its manager; dock motion is inactive',
+            );
+            return;
+        }
+
+        this.#manager = manager;
         this.#scanDocks();
     }
 
     #detachManager() {
-        if (!this.#manager)
-            return;
-        for (const id of this.#managerSignals)
-            this.#manager.disconnect(id);
+        if (!this.#manager) return;
+        for (const id of this.#managerSignals) this.#manager.disconnect(id);
         this.#managerSignals = [];
         this.#manager = null;
     }
@@ -116,15 +133,20 @@ export class DockIntegration {
     #scanDocks() {
         const docks = this.#manager?._allDocks;
         if (!Array.isArray(docks)) {
-            this.#warnOnce('missing-docks',
-                'Dash to Dock does not expose its dock collection; dock motion is inactive');
+            this.#warnOnce(
+                'missing-docks',
+                'Dash to Dock does not expose its dock collection; dock motion is inactive',
+            );
             return;
         }
 
         for (const dock of docks) {
             const box = dock?.dash?._box;
             if (!box) {
-                this.#warnOnce('missing-box', 'a Dash to Dock instance has no dash box');
+                this.#warnOnce(
+                    'missing-box',
+                    'a Dash to Dock instance has no dash box',
+                );
                 continue;
             }
             this.#hookBox(box, positionFromSide(dock.position));
@@ -136,15 +158,17 @@ export class DockIntegration {
     #hookBox(box, position) {
         const group = new DockMotionGroup();
         let addedId = 0;
-        const added = this.#registry.addBox(box, () => {
-            if (addedId)
-                box.disconnect(addedId);
-            group.dispose();
-        }, () => {
-            group.onBoxDestroyed();
-        });
-        if (!added)
-            return;
+        const added = this.#registry.addBox(
+            box,
+            () => {
+                if (addedId) box.disconnect(addedId);
+                group.dispose();
+            },
+            () => {
+                group.onBoxDestroyed();
+            },
+        );
+        if (!added) return;
         for (const container of box.get_children())
             this.#registerContainer(container, position, group);
         addedId = box.connect('child-added', (_box, container) => {
@@ -155,17 +179,17 @@ export class DockIntegration {
     #registerContainer(container, position, group) {
         const icon = container?.child ?? container;
         const bin = icon?.icon?._iconBin;
-        if (!bin || this.#registry.getIcon(icon))
-            return;
+        if (!bin || this.#registry.getIcon(icon)) return;
 
         const controller = this.#controllerFactory({
             icon,
             bin,
             position,
             recipe: this.#recipe,
-            onHoverChanged: (changed, hovered) => group.setHovered(changed, hovered),
-            onDestroyed: destroyed => group.remove(destroyed),
-            onMeasured: measurement => this.#publishBudget(measurement),
+            onHoverChanged: (changed, hovered) =>
+                group.setHovered(changed, hovered),
+            onDestroyed: (destroyed) => group.remove(destroyed),
+            onMeasured: (measurement) => this.#publishBudget(measurement),
         });
         group.add(controller, container, boxChildren(container));
         this.#registry.addIcon(icon, controller);
@@ -177,8 +201,7 @@ export class DockIntegration {
         this.#measureId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
             this.#measureId = 0;
             for (const controller of this.controllers) {
-                if (this.#publishBudget(controller.measure()))
-                    break;
+                if (this.#publishBudget(controller.measure())) break;
             }
             return GLib.SOURCE_REMOVE;
         });
@@ -192,20 +215,25 @@ export class DockIntegration {
     }
 
     #publishBudget(measurement) {
-        if (!measurement)
-            return false;
+        if (!measurement) return false;
         const {budgetPx, iconNormalSize} = measurement;
-        if (!(budgetPx > 0) || !(iconNormalSize > 0))
-            return false;
+        if (!(budgetPx > 0) || !(iconNormalSize > 0)) return false;
         this.#publishMeasurement(budgetPx, iconNormalSize);
         return true;
     }
 
     #warnOnce(key, message) {
-        if (this.#warnings.has(key))
-            return;
+        if (this.#warnings.has(key)) return;
         this.#warnings.add(key);
         console.warn(`[d2d-companion] ${message}`);
+    }
+    #getDockExtension() {
+        for (const uuid of DASH_TO_DOCK_UUIDS) {
+            const ext = Main.extensionManager.lookup(uuid);
+
+            if (ext?.stateObj) return ext;
+        }
+        return null;
     }
 }
 
@@ -215,16 +243,19 @@ class DockMotionGroup {
 
     add(controller, container, orderedContainers) {
         this.#entries.push({controller, container});
-        this.#entries.sort((first, second) =>
-            orderedContainers.indexOf(first.container) -
-            orderedContainers.indexOf(second.container));
+        this.#entries.sort(
+            (first, second) =>
+                orderedContainers.indexOf(first.container) -
+                orderedContainers.indexOf(second.container),
+        );
         this.#syncNeighbors();
     }
 
     remove(controller) {
-        const index = this.#entries.findIndex(entry => entry.controller === controller);
-        if (index === -1)
-            return;
+        const index = this.#entries.findIndex(
+            (entry) => entry.controller === controller,
+        );
+        if (index === -1) return;
         this.#entries.splice(index, 1);
         if (this.#hovered === controller) {
             this.#hovered = null;
@@ -250,9 +281,11 @@ class DockMotionGroup {
 
     #syncNeighbors() {
         const hoveredIndex = this.#entries.findIndex(
-            entry => entry.controller === this.#hovered);
+            (entry) => entry.controller === this.#hovered,
+        );
         for (let index = 0; index < this.#entries.length; index++) {
-            const neighbor = hoveredIndex !== -1 && Math.abs(index - hoveredIndex) === 1;
+            const neighbor =
+                hoveredIndex !== -1 && Math.abs(index - hoveredIndex) === 1;
             this.#entries[index].controller.setNeighborHover(neighbor);
         }
     }
