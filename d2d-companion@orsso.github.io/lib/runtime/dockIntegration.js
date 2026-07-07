@@ -3,7 +3,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {DockPosition} from '../motion/catalog.js';
-import {LiveRegistry} from './liveRegistry.js';
+import {MotionSurface} from './motionSurface.js';
 
 const DASH_TO_DOCK_UUID = 'dash-to-dock@micxgx.gmail.com';
 
@@ -14,9 +14,8 @@ export class DockIntegration {
     #managerSignals = [];
     #measureId = 0;
     #publishMeasurement;
-    #recipe = null;
-    #registry = null;
     #stateChangedId = 0;
+    #surface = null;
     #warnings = new Set();
 
     constructor({controllerFactory, publishMeasurement = () => {}}) {
@@ -25,14 +24,17 @@ export class DockIntegration {
     }
 
     get controllers() {
-        return this.#registry?.icons ?? [];
+        return this.#surface?.controllers ?? [];
     }
 
     enable(recipe) {
-        if (this.#registry)
+        if (this.#surface)
             return;
-        this.#recipe = recipe;
-        this.#registry = new LiveRegistry();
+        this.#surface = new MotionSurface({
+            controllerFactory: this.#controllerFactory,
+            recipe,
+            onMeasured: measurement => this.#publishBudget(measurement),
+        });
         this.#generation++;
         this.#stateChangedId = Main.extensionManager.connect(
             'extension-state-changed', (_manager, extension) => {
@@ -52,24 +54,20 @@ export class DockIntegration {
         }
         this.#detachManager();
         this.#cancelBudgetMeasure();
-        this.#registry?.disable();
-        this.#registry = null;
-        this.#recipe = null;
+        this.#surface?.dispose();
+        this.#surface = null;
     }
 
     setRecipe(recipe) {
-        this.#recipe = recipe;
-        for (const controller of this.controllers)
-            controller.setRecipe(recipe);
+        this.#surface?.setRecipe(recipe);
     }
 
     refreshStyles() {
-        for (const controller of this.controllers)
-            controller.refreshStyle?.();
+        this.#surface?.refreshStyles();
     }
 
     getController(appIcon) {
-        return this.#registry?.getIcon(appIcon) ?? null;
+        return this.#surface?.getController(appIcon) ?? null;
     }
 
     async #attach(generation) {
@@ -88,7 +86,7 @@ export class DockIntegration {
             return;
         }
 
-        if (generation !== this.#generation || !this.#registry)
+        if (generation !== this.#generation || !this.#surface)
             return;
         if (!module.dockManager) {
             this.#warnOnce('missing-manager',
@@ -127,48 +125,10 @@ export class DockIntegration {
                 this.#warnOnce('missing-box', 'a Dash to Dock instance has no dash box');
                 continue;
             }
-            this.#hookBox(box, positionFromSide(dock.position));
+            this.#surface.addBox(box, positionFromSide(dock.position));
         }
         this.#scheduleBudgetMeasure();
         this.refreshStyles();
-    }
-
-    #hookBox(box, position) {
-        const group = new DockMotionGroup();
-        let addedId = 0;
-        const added = this.#registry.addBox(box, () => {
-            if (addedId)
-                box.disconnect(addedId);
-            group.dispose();
-        }, () => {
-            group.onBoxDestroyed();
-        });
-        if (!added)
-            return;
-        for (const container of box.get_children())
-            this.#registerContainer(container, position, group);
-        addedId = box.connect('child-added', (_box, container) => {
-            this.#registerContainer(container, position, group);
-        });
-    }
-
-    #registerContainer(container, position, group) {
-        const icon = container?.child ?? container;
-        const bin = icon?.icon?._iconBin;
-        if (!bin || this.#registry.getIcon(icon))
-            return;
-
-        const controller = this.#controllerFactory({
-            icon,
-            bin,
-            position,
-            recipe: this.#recipe,
-            onHoverChanged: (changed, hovered) => group.setHovered(changed, hovered),
-            onDestroyed: destroyed => group.remove(destroyed),
-            onMeasured: measurement => this.#publishBudget(measurement),
-        });
-        group.add(controller, container, boxChildren(container));
-        this.#registry.addIcon(icon, controller);
     }
 
     // Populate the prefs readout before the first hover.
@@ -207,59 +167,6 @@ export class DockIntegration {
         this.#warnings.add(key);
         console.warn(`[d2d-companion] ${message}`);
     }
-}
-
-class DockMotionGroup {
-    #entries = [];
-    #hovered = null;
-
-    add(controller, container, orderedContainers) {
-        this.#entries.push({controller, container});
-        this.#entries.sort((first, second) =>
-            orderedContainers.indexOf(first.container) -
-            orderedContainers.indexOf(second.container));
-        this.#syncNeighbors();
-    }
-
-    remove(controller) {
-        const index = this.#entries.findIndex(entry => entry.controller === controller);
-        if (index === -1)
-            return;
-        this.#entries.splice(index, 1);
-        if (this.#hovered === controller) {
-            this.#hovered = null;
-            this.#syncNeighbors();
-        }
-    }
-
-    setHovered(controller, hovered) {
-        this.#hovered = hovered ? controller : this.#hovered === controller ? null : this.#hovered;
-        this.#syncNeighbors();
-    }
-
-    dispose() {
-        this.#hovered = null;
-        this.#syncNeighbors();
-        this.#entries = [];
-    }
-
-    onBoxDestroyed() {
-        this.#hovered = null;
-        this.#entries = [];
-    }
-
-    #syncNeighbors() {
-        const hoveredIndex = this.#entries.findIndex(
-            entry => entry.controller === this.#hovered);
-        for (let index = 0; index < this.#entries.length; index++) {
-            const neighbor = hoveredIndex !== -1 && Math.abs(index - hoveredIndex) === 1;
-            this.#entries[index].controller.setNeighborHover(neighbor);
-        }
-    }
-}
-
-function boxChildren(container) {
-    return container.get_parent()?.get_children() ?? [container];
 }
 
 function positionFromSide(side) {
