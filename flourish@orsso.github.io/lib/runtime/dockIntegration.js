@@ -192,7 +192,7 @@ export class DockIntegration {
         if (this.#warnings.has(key))
             return;
         this.#warnings.add(key);
-        console.warn(`[d2d-companion] ${message}`);
+        console.warn(`[flourish] ${message}`);
     }
 }
 

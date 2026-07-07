@@ -1,4 +1,4 @@
-const REFRESH_CLASS = 'd2d-companion-style-refresh';
+const REFRESH_CLASS = 'flourish-style-refresh';
 
 export function refreshWidgetStyle(widget) {
     if (!widget)

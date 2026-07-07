@@ -1,4 +1,4 @@
-UUID := d2d-companion@orsso.github.io
+UUID := flourish@orsso.github.io
 SCHEMA_DIR := $(UUID)/schemas
 DIST_DIR := dist
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
