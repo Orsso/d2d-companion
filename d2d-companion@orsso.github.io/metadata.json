@@ -5,5 +5,5 @@
   "shell-version": ["46", "47", "48", "49", "50"],
   "url": "https://github.com/Orsso/d2d-companion",
   "settings-schema": "org.gnome.shell.extensions.d2d-companion",
-  "version-name": "0.1.0-beta.2"
+  "version-name": "0.1.0-beta.3"
 }
