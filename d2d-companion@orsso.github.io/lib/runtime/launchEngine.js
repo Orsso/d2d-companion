@@ -20,6 +20,7 @@ import {DeferredLaunchEnds} from './deferredLaunchEnds.js';
 import {resolveAnimationMode} from './easing.js';
 
 const HANDOFF_DURATION = 80;
+const RETREAT_DURATION = 180;
 
 export class LaunchEngine {
     #deferredEnds;
@@ -298,9 +299,24 @@ export class LaunchEngine {
             return;
         this.#clearRepeatTimer(session);
         session.clone.remove_all_transitions();
+        session.target.opacity = session.originalOpacity;
+        // No visible icon to hand back to: retreat toward the hidden dash
+        // instead of settling into it.
+        if (!session.target.mapped) {
+            const {outward} = getOrientation(session.controller.position);
+            const [width, height] = session.clone.get_transformed_size();
+            session.clone.ease({
+                translation_x: session.clone.translation_x - outward[0] * width,
+                translation_y: session.clone.translation_y - outward[1] * height,
+                opacity: 0,
+                duration: RETREAT_DURATION,
+                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                onComplete: () => this.#completeLive(session),
+            });
+            return;
+        }
         const [x, y] = session.target.get_transformed_position();
         const [width, height] = session.target.get_transformed_size();
-        session.target.opacity = session.originalOpacity;
         session.clone.ease({
             x,
             y,

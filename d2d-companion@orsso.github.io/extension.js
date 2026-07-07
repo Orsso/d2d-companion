@@ -46,7 +46,10 @@ export default class D2DCompanionExtension extends Extension {
         this._dashIntegration.enable(this._recipe);
 
         this._launchEngine = new LaunchEngine({
-            getController: icon => this._dockIntegration?.getController(icon),
+            getController: icon =>
+                this._dockIntegration?.getController(icon) ??
+                this._dashIntegration?.getController(icon) ??
+                null,
         });
         this._launchEngine.enable();
 
