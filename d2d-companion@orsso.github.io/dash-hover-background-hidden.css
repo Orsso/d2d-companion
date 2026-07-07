@@ -1,0 +1,4 @@
+#dash .dash-item-container .overview-tile:hover .overview-icon {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}

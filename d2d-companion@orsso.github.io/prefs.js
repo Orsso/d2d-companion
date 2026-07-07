@@ -1,4 +1,5 @@
 import Adw from 'gi://Adw';
+import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
@@ -121,6 +122,15 @@ export default class D2DCompanionPreferences extends ExtensionPreferences {
         essentials.add(navigationGroup);
 
         buildAdvancedPage(advanced, controls, editor, settings, state);
+
+        // The focused app tile is a Dash to Dock concept.
+        if (!dashToDockEnabled()) {
+            for (const row of [controls.focusedAppBackground,
+                controls.advancedFocusedAppBackground]) {
+                row.sensitive = false;
+                row.subtitle = 'Requires Dash to Dock';
+            }
+        }
 
         const sync = () => syncControls(settings, editor, controls, state);
         const changedId = settings.connect('changed', sync);
@@ -364,6 +374,12 @@ function onProfileClicked({window, editor, profile, state, settings, controls}) 
             syncControls(settings, editor, controls, state);
     });
     dialog.present();
+}
+
+function dashToDockEnabled() {
+    const shellSettings = new Gio.Settings({schema_id: 'org.gnome.shell'});
+    return shellSettings.get_strv('enabled-extensions')
+        .includes('dash-to-dock@micxgx.gmail.com');
 }
 
 function createSwitchRow(group, title, subtitle = null) {

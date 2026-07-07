@@ -2,6 +2,7 @@ import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {readActiveRecipe} from './lib/motion/settings.js';
+import {DashIntegration} from './lib/runtime/dashIntegration.js';
 import {DockIntegration} from './lib/runtime/dockIntegration.js';
 import {IconMotionController} from './lib/runtime/iconMotionController.js';
 import {LaunchEngine} from './lib/runtime/launchEngine.js';
@@ -17,8 +18,14 @@ export default class D2DCompanionExtension extends Extension {
             publishMeasurement: (budget, iconSize) =>
                 this._publishMeasurement(budget, iconSize),
         });
+        this._dashIntegration = new DashIntegration({
+            controllerFactory: options => new IconMotionController(options),
+        });
 
-        const refreshDockStyles = () => this._dockIntegration?.refreshStyles();
+        const refreshDockStyles = () => {
+            this._dockIntegration?.refreshStyles();
+            this._dashIntegration?.refreshStyles();
+        };
         this._hoverStyle = new BackgroundStyle(
             this, 'hover-background-hidden.css', {refreshStyles: refreshDockStyles});
         this._hoverStyle.setEnabled(
@@ -29,8 +36,14 @@ export default class D2DCompanionExtension extends Extension {
                 {refreshStyles: refreshDockStyles});
         this._focusedAppStyle.setEnabled(
             !this._settings.get_boolean('show-focused-app-background'));
+        this._dashHoverStyle = new BackgroundStyle(
+            this, 'dash-hover-background-hidden.css',
+            {refreshStyles: refreshDockStyles});
+        this._dashHoverStyle.setEnabled(
+            !this._settings.get_boolean('show-hover-background'));
 
         this._dockIntegration.enable(this._recipe);
+        this._dashIntegration.enable(this._recipe);
 
         this._launchEngine = new LaunchEngine({
             getController: icon => this._dockIntegration?.getController(icon),
@@ -46,6 +59,7 @@ export default class D2DCompanionExtension extends Extension {
         this._systemAnimationId = St.Settings.get().connect(
             'notify::enable-animations', () => {
                 this._dockIntegration?.setRecipe(this._recipe);
+                this._dashIntegration?.setRecipe(this._recipe);
             });
     }
 
@@ -66,6 +80,10 @@ export default class D2DCompanionExtension extends Extension {
         this._hoverStyle = null;
         this._focusedAppStyle?.disable();
         this._focusedAppStyle = null;
+        this._dashHoverStyle?.disable();
+        this._dashHoverStyle = null;
+        this._dashIntegration?.disable();
+        this._dashIntegration = null;
         this._dockIntegration?.disable();
         this._dockIntegration = null;
         this._recipe = null;
@@ -75,7 +93,10 @@ export default class D2DCompanionExtension extends Extension {
     _syncSettings() {
         this._recipe = readActiveRecipe(this._settings);
         this._dockIntegration?.setRecipe(this._recipe);
+        this._dashIntegration?.setRecipe(this._recipe);
         this._hoverStyle?.setEnabled(
+            !this._settings.get_boolean('show-hover-background'));
+        this._dashHoverStyle?.setEnabled(
             !this._settings.get_boolean('show-hover-background'));
         this._focusedAppStyle?.setEnabled(
             !this._settings.get_boolean('show-focused-app-background'));

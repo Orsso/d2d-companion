@@ -16,6 +16,7 @@ required=(
     lib/prefs/demoSequence.js
     lib/prefs/motionPreview.js
     lib/prefs/settingsEditor.js
+    lib/runtime/dashIntegration.js
     lib/runtime/deferredLaunchEnds.js
     lib/runtime/dockIntegration.js
     lib/runtime/easing.js
@@ -29,6 +30,7 @@ required=(
     schemas/org.gnome.shell.extensions.d2d-companion.gschema.xml
     hover-background-hidden.css
     focused-app-background-hidden.css
+    dash-hover-background-hidden.css
 )
 
 for path in "${required[@]}"; do
