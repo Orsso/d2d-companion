@@ -129,7 +129,7 @@ export default class D2DCompanionPreferences extends ExtensionPreferences {
             for (const row of [controls.focusedAppBackground,
                 controls.advancedFocusedAppBackground]) {
                 row.sensitive = false;
-                row.subtitle = 'Requires Dash to Dock';
+                row.subtitle = 'Requires Dash to Dock or Ubuntu Dock';
             }
         }
 
@@ -152,10 +152,10 @@ function buildAdvancedPage(page, controls, editor, settings, state) {
         subtitle: 'Measured from the dock',
     });
     budgetRow.add_suffix(createHelpButton(
-        'Dash to Dock clips icons at the dock edge. Magnification and lift share ' +
-        'the space that is left; a smaller icon size in Dash to Dock usually ' +
-        'leaves more room. The overview dash is not clipped, so the full ' +
-        'values apply there.'));
+        'The dock clips icons at its edge. Magnification and lift share ' +
+        'the space that is left; a smaller dock icon size usually ' +
+        'leaves more room. This only concerns the dock: the overview dash ' +
+        'is never clipped, so the full values always apply there.'));
     controls.budgetRow = budgetRow;
     budgetGroup.add(budgetRow);
     page.add(budgetGroup);
@@ -382,8 +382,9 @@ function onProfileClicked({window, editor, profile, state, settings, controls}) 
 
 function dashToDockEnabled() {
     const shellSettings = new Gio.Settings({schema_id: 'org.gnome.shell'});
-    return shellSettings.get_strv('enabled-extensions')
-        .includes('dash-to-dock@micxgx.gmail.com');
+    const enabled = shellSettings.get_strv('enabled-extensions');
+    return enabled.includes('dash-to-dock@micxgx.gmail.com') ||
+        enabled.includes('ubuntu-dock@ubuntu.com');
 }
 
 function createSwitchRow(group, title, subtitle = null) {

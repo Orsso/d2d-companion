@@ -5,7 +5,11 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {DockPosition} from '../motion/catalog.js';
 import {MotionSurface} from './motionSurface.js';
 
-const DASH_TO_DOCK_UUID = 'dash-to-dock@micxgx.gmail.com';
+// Ubuntu Dock is Ubuntu's build of Dash to Dock.
+const DASH_TO_DOCK_BUILDS = [
+    'dash-to-dock@micxgx.gmail.com',
+    'ubuntu-dock@ubuntu.com',
+];
 
 export class DockIntegration {
     #controllerFactory;
@@ -38,7 +42,7 @@ export class DockIntegration {
         this.#generation++;
         this.#stateChangedId = Main.extensionManager.connect(
             'extension-state-changed', (_manager, extension) => {
-                if (extension.uuid !== DASH_TO_DOCK_UUID)
+                if (!DASH_TO_DOCK_BUILDS.includes(extension.uuid))
                     return;
                 this.#detachManager();
                 this.#attach(++this.#generation);
@@ -71,10 +75,10 @@ export class DockIntegration {
     }
 
     async #attach(generation) {
-        const extension = Main.extensionManager.lookup(DASH_TO_DOCK_UUID);
+        const extension = lookupDashToDock();
         if (!extension) {
             this.#warnOnce('missing-extension',
-                'Dash to Dock is not installed; dock motion is inactive');
+                'Dash to Dock (or Ubuntu Dock) is not installed; dock motion is inactive');
             return;
         }
 
@@ -167,6 +171,14 @@ export class DockIntegration {
         this.#warnings.add(key);
         console.warn(`[d2d-companion] ${message}`);
     }
+}
+
+// Both builds can be installed at once; prefer the active one.
+function lookupDashToDock() {
+    const builds = DASH_TO_DOCK_BUILDS
+        .map(uuid => Main.extensionManager.lookup(uuid))
+        .filter(extension => extension);
+    return builds.find(extension => extension.stateObj) ?? builds[0] ?? null;
 }
 
 function positionFromSide(side) {
