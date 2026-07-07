@@ -22,6 +22,7 @@ required=(
     lib/runtime/iconMotionController.js
     lib/runtime/launchEngine.js
     lib/runtime/liveRegistry.js
+    lib/runtime/motionSurface.js
     lib/runtime/backgroundStyle.js
     metadata.json
     prefs.js

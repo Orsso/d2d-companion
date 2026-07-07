@@ -23,6 +23,7 @@ const modules = [
     './deferredLaunchEnds.test.js',
     './demoSequence.test.js',
     './lifecycle.test.js',
+    './motionSurface.test.js',
     './pressInteraction.test.js',
     './runtimeHelpers.test.js',
     './settings.test.js',
