@@ -4,6 +4,13 @@ A small extension that animates the GNOME dash with hover zoom, press
 feedback, and launch animations. Dash to Dock and Ubuntu Dock are supported
 out of the box.
 
+https://github.com/user-attachments/assets/764133e1-9f49-414c-8291-f9e08ff26cf6
+
+<sub>In the video: [Blur My Shell](https://extensions.gnome.org/extension/3193/blur-my-shell/),
+[Compiz alike magic lamp effect](https://extensions.gnome.org/extension/3740/compiz-alike-magic-lamp-effect/),
+[Dynamic Music Pill](https://extensions.gnome.org/extension/9334/dynamic-music-pill/),
+[GNOME macOS Tahoe theme](https://github.com/kayozxo/GNOME-macOS-Tahoe).</sub>
+
 It is a companion, not a dock. The Shell or the dock does the dock work.
 This adds the motion, and puts everything back when turned off.
 
