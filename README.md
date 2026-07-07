@@ -4,7 +4,7 @@ A small extension that animates the GNOME dash with hover zoom, press
 feedback, and launch animations. Dash to Dock and Ubuntu Dock are supported
 out of the box.
 
-It is a companion, not a dock. The Shell or Dash to Dock does the dock work.
+It is a companion, not a dock. The Shell or the dock does the dock work.
 This adds the motion, and puts everything back when turned off.
 
 ## How it works
@@ -14,7 +14,7 @@ emit. The launch animation is the one exception: it overrides
 `AppIcon.animateLaunch` (the stock zoom) through GNOME Shell's official
 `InjectionManager`, and restores it when the extension is disabled.
 The built-in dash clips its icons; the extension lifts that while it runs
-and puts it back. Nothing else in the Shell or in Dash to Dock is patched.
+and puts it back. Nothing else in the Shell or in the dock is patched.
 
 ## Compatibility
 
