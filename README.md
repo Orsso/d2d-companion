@@ -33,7 +33,6 @@ This beta was tested with:
 - the overview dash on GNOME Shell 49
 - Dash to Dock 105
 - Ubuntu Dock on Ubuntu 24.04
-- the standard GNOME Shell theme
 
 Other setups may work, but I have not tested them for this release.
 
