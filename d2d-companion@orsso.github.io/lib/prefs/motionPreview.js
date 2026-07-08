@@ -13,6 +13,7 @@ import {
 } from '../motion/transforms.js';
 import {
     buildDemoSequence,
+    buildEffectSequence,
     DEMO_TEMPO,
     DemoPhase,
     hoverIsActive,
@@ -32,6 +33,9 @@ const IDENTITY = Object.freeze({
     dim: 0,
 });
 
+const INLINE_ICON_SIZE = 24;
+const INLINE_STEP = INLINE_ICON_SIZE + 10;
+
 const EASINGS = Object.freeze({
     linear: Adw.Easing.LINEAR,
     'ease-out-quad': Adw.Easing.EASE_OUT_QUAD,
@@ -40,15 +44,24 @@ const EASINGS = Object.freeze({
 });
 
 export const MotionPreview = GObject.registerClass(class MotionPreview extends Gtk.DrawingArea {
-    _init({recipe, selected = false, ...params}) {
+    // Given an effect ('hover', 'press', 'launch') the preview goes bare
+    // and demos just that effect.
+    _init({recipe, selected = false, effect = null, ...params}) {
+        const inline = Boolean(effect);
+        const iconCount = effect === 'hover' ? 3 : 1;
         super._init({
-            height_request: 96,
-            hexpand: true,
-            focusable: true,
+            height_request: inline ? 64 : 96,
+            width_request: inline ? iconCount * INLINE_STEP + 22 : -1,
+            hexpand: !inline,
+            focusable: !inline,
+            valign: inline ? Gtk.Align.CENTER : Gtk.Align.FILL,
             ...params,
         });
-        this._recipe = recipe;
         this._selected = selected;
+        this._effect = effect;
+        this._iconCount = iconCount;
+        this._recipe = this._adoptRecipe(recipe);
+        this._held = false;
         this._hovered = false;
         this._pressed = false;
         this._launching = false;
@@ -70,6 +83,26 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this.connect('unmap', () => this.stop());
     }
 
+    // Effect previews show the settings, not the Basics toggles.
+    _adoptRecipe(recipe) {
+        if (!this._effect || recipe[this._effect].enabled)
+            return recipe;
+        return {
+            ...recipe,
+            [this._effect]: {...recipe[this._effect], enabled: true},
+        };
+    }
+
+    _resolveMotion() {
+        return resolveIconTransform({
+            position: 'bottom',
+            recipe: this._recipe,
+            hovered: this._hovered,
+            pressed: this._pressed,
+            launching: this._launching,
+        });
+    }
+
     setRecipe(recipe) {
         this._cancelLoop();
         this._pressGeneration++;
@@ -79,13 +112,17 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._launchAnimation = null;
         this._pressed = false;
         this._launching = false;
-        this._recipe = recipe;
-        this._motionTransform = resolveIconTransform({
-            position: 'bottom',
-            recipe: this._recipe,
-            hovered: this._hovered,
-        });
+        this._recipe = this._adoptRecipe(recipe);
+        this._motionTransform = this._resolveMotion();
         this._launchTransform = {...IDENTITY};
+        this.queue_draw();
+    }
+
+    // setRecipe without the reset: a running loop just picks the values up.
+    updateRecipe(recipe) {
+        this._recipe = this._adoptRecipe(recipe);
+        if (this._motionAnimation?.state !== Adw.AnimationState.PLAYING)
+            this._motionTransform = this._resolveMotion();
         this.queue_draw();
     }
 
@@ -96,6 +133,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
 
     stop() {
         this._cancelLoop();
+        this._held = false;
         this._pressGeneration++;
         this._motionAnimation?.reset();
         this._launchAnimation?.reset();
@@ -122,15 +160,21 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     }
 
     playLoop() {
-        if (this._loopActive)
+        if (this._held || this._loopActive)
             return;
         this._loopActive = true;
         const generation = ++this._loopGeneration;
-        if (!hoverIsActive(this._recipe)) {
-            this._runDemoSequence(generation);
+        if (this._effect) {
+            this._runSequence(generation,
+                () => buildEffectSequence(this._effect, this._recipe));
             return;
         }
-        this._runIntroSweep(generation, () => this._runDemoSequence(generation));
+        if (!hoverIsActive(this._recipe)) {
+            this._runSequence(generation, () => buildDemoSequence(this._recipe));
+            return;
+        }
+        this._runIntroSweep(generation, () => this._runSequence(
+            generation, () => buildDemoSequence(this._recipe)));
     }
 
     _runIntroSweep(generation, onComplete) {
@@ -176,8 +220,11 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     }
 
     stopLoop() {
+        if (this._held)
+            return;
         if (!this._loopActive && !this._timeoutId) {
             this._hovered = false;
+            this._pressed = false;
             this._animateMotion(this._recipe.hover.duration);
             return;
         }
@@ -191,14 +238,40 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._animateMotion(this._recipe.hover.duration);
     }
 
-    _runDemoSequence(generation) {
-        const phases = buildDemoSequence(this._recipe);
+    // Freeze in the pose the held slider edits; edits keep landing on it.
+    holdPose() {
+        this._cancelLoop();
+        this._held = true;
+        this._hovered = this._effect === 'hover';
+        this._pressed = this._effect === 'press';
+        this._animateMotion(this._pressed
+            ? this._recipe.press.duration
+            : this._recipe.hover.duration);
+    }
+
+    releasePose(resume) {
+        this._held = false;
+        this._hovered = false;
+        this._pressed = false;
+        if (resume)
+            this.playLoop();
+        else
+            this._animateMotion(this._recipe.hover.duration);
+    }
+
+    _runSequence(generation, getPhases) {
+        let phases = getPhases();
         let index = 0;
         const advance = () => {
             if (!this._loopActive || generation !== this._loopGeneration)
                 return;
-            if (index >= phases.length)
+            if (index >= phases.length) {
+                // Rebuilt every pass, so edits reshape the loop live.
+                phases = getPhases();
                 index = 0;
+            }
+            if (!phases.length)
+                return;
             const phase = phases[index++];
             this._runDemoPhase(phase, generation, advance);
         };
@@ -221,6 +294,9 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
             case DemoPhase.PRE_LAUNCH_PAUSE:
                 this._wait(PRE_LAUNCH_PAUSE_MS, generation, done);
                 break;
+            case DemoPhase.REPEAT_PAUSE:
+                this._wait(this._recipe.launch.repeatPause, generation, done);
+                break;
             case DemoPhase.SETTLE:
                 this._wait(SETTLE_MS, generation, done);
                 break;
@@ -232,6 +308,9 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
                 break;
             case DemoPhase.CLICK_LAUNCH:
                 this._demoClickLaunch(done);
+                break;
+            case DemoPhase.LAUNCH:
+                this._beginLaunch({onComplete: done});
                 break;
             default:
                 done();
@@ -282,13 +361,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
 
     _animateMotion(duration, onDone = null, easing = null) {
         const from = this._motionTransform;
-        const to = resolveIconTransform({
-            position: 'bottom',
-            recipe: this._recipe,
-            hovered: this._hovered,
-            launching: this._launching,
-            pressed: this._pressed,
-        });
+        const to = this._resolveMotion();
         this._motionAnimation?.reset();
         const target = Adw.CallbackAnimationTarget.new(value => {
             this._motionTransform = interpolateWithDim(from, to, value);
@@ -297,8 +370,12 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._motionAnimation = Adw.TimedAnimation.new(this, 0, 1, duration, target);
         this._motionAnimation.set_easing(
             easing ?? EASINGS[this._recipe.hover.easing] ?? Adw.Easing.EASE_OUT_CUBIC);
-        if (onDone)
-            this._motionAnimation.connect('done', onDone);
+        // Settle on the latest recipe; edits may land mid-flight.
+        this._motionAnimation.connect('done', () => {
+            this._motionTransform = this._resolveMotion();
+            this.queue_draw();
+            onDone?.();
+        });
         this._motionAnimation.play();
     }
 
@@ -363,6 +440,10 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     }
 
     _draw(cr, width, height) {
+        if (this._effect) {
+            this._drawInline(cr, width, height);
+            return;
+        }
         const centerX = width / 2;
         const iconSize = 18;
         const pad = 12;
@@ -396,6 +477,19 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
             const transform = this._iconTransform(i, middle);
             drawIcon(cr, innerLeft + i * step, iconTop, iconSize,
                 ICON_COLORS[i], transform);
+        }
+    }
+
+    _drawInline(cr, width, height) {
+        const count = this._iconCount;
+        const middle = (count - 1) / 2;
+        const iconTop = height - INLINE_ICON_SIZE - 8;
+        const first = width / 2 - middle * INLINE_STEP;
+        const colorOffset = (ICON_COLORS.length - count) >> 1;
+        for (let i = 0; i < count; i++) {
+            const transform = this._iconTransform(i, middle);
+            drawIcon(cr, first + i * INLINE_STEP, iconTop, INLINE_ICON_SIZE,
+                ICON_COLORS[i + colorOffset], transform);
         }
     }
 
