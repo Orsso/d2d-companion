@@ -19,9 +19,10 @@ dash has to be tried in a real session.
 ## Code Map
 
 - `lib/motion/` has the presets and transform math.
+- `lib/runtime/` wires them into the shell:
+- `DockIntegration` talks to Dash to Dock and Ubuntu Dock; `DashIntegration`
+  hooks the built-in overview dash. Both hand their icon box to `MotionSurface`.
 - `MotionSurface` turns one box of icons into controllers.
-- `DockIntegration` talks to Dash to Dock.
-- `DashIntegration` hooks the built-in overview dash.
 - `IconMotionController` handles one icon.
 - `LaunchEngine` handles launch clones and repeat timing.
 - `prefs.js` builds the settings window.
