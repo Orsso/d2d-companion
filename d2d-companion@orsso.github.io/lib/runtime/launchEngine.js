@@ -21,6 +21,7 @@ import {resolveAnimationMode} from './easing.js';
 
 const HANDOFF_DURATION = 80;
 const RETREAT_DURATION = 180;
+const RETREAT_SHRINK = 0.85;
 
 export class LaunchEngine {
     #deferredEnds;
@@ -262,7 +263,10 @@ export class LaunchEngine {
             this.#scheduleNextCycle(session, pause);
             return;
         }
-        this.#handoff(session);
+        // Pulse and stretch settle; everything else lands at speed.
+        const momentum = launch.effect !== LaunchEffect.PULSE &&
+            launch.effect !== LaunchEffect.STRETCH;
+        this.#handoff(session, {momentum});
     }
 
     #scheduleNextCycle(session, pause) {
@@ -294,23 +298,29 @@ export class LaunchEngine {
             });
     }
 
-    #handoff(session) {
+    #handoff(session, {momentum = false} = {}) {
         if (session.finished)
             return;
         this.#clearRepeatTimer(session);
         session.clone.remove_all_transitions();
         session.target.opacity = session.originalOpacity;
-        // No visible icon to hand back to: retreat toward the hidden dash
-        // instead of settling into it.
-        if (!session.target.mapped) {
+        // No icon to hand back to, or the overview is taking it away:
+        // retreat toward the hidden dash instead of settling into it.
+        const dashClosing = !Main.overview.visibleTarget &&
+            Main.overview.dash?.contains(session.target);
+        if (!session.target.mapped || dashClosing) {
             const {outward} = getOrientation(session.controller.position);
             const [width, height] = session.clone.get_transformed_size();
             session.clone.ease({
                 translation_x: session.clone.translation_x - outward[0] * width,
                 translation_y: session.clone.translation_y - outward[1] * height,
+                scale_x: session.clone.scale_x * RETREAT_SHRINK,
+                scale_y: session.clone.scale_y * RETREAT_SHRINK,
                 opacity: 0,
                 duration: RETREAT_DURATION,
-                mode: Clutter.AnimationMode.EASE_IN_QUAD,
+                mode: momentum
+                    ? Clutter.AnimationMode.EASE_OUT_QUAD
+                    : Clutter.AnimationMode.EASE_IN_QUAD,
                 onComplete: () => this.#completeLive(session),
             });
             return;
