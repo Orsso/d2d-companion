@@ -29,10 +29,10 @@ D2D Companion declares support for GNOME Shell 46 to 50.
 
 This beta was tested with:
 
-- GNOME Shell 46 and 49
-- the overview dash on GNOME Shell 49
+- GNOME Shell 46, 47, 48, 49, and 50
+- the overview dash on GNOME Shell 46 to 50
 - Dash to Dock 105
-- Ubuntu Dock on Ubuntu 24.04
+- Ubuntu Dock on Ubuntu 24.04 and 26.04
 
 Other setups may work, but I have not tested them for this release.
 
