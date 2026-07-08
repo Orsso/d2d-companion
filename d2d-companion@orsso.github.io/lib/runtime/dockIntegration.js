@@ -12,6 +12,7 @@ const DASH_TO_DOCK_BUILDS = [
 ];
 
 export class DockIntegration {
+    #attachIdleId = 0;
     #controllerFactory;
     #generation = 0;
     #manager = null;
@@ -45,7 +46,7 @@ export class DockIntegration {
                 if (!DASH_TO_DOCK_BUILDS.includes(extension.uuid))
                     return;
                 this.#detachManager();
-                this.#attach(++this.#generation);
+                this.#scheduleAttach();
             });
         this.#attach(this.#generation);
     }
@@ -56,6 +57,7 @@ export class DockIntegration {
             Main.extensionManager.disconnect(this.#stateChangedId);
             this.#stateChangedId = 0;
         }
+        this.#cancelScheduledAttach();
         this.#detachManager();
         this.#cancelBudgetMeasure();
         this.#surface?.dispose();
@@ -72,6 +74,24 @@ export class DockIntegration {
 
     getController(appIcon) {
         return this.#surface?.getController(appIcon) ?? null;
+    }
+
+    // Ubuntu Dock recreates its manager from the same signal; read it after.
+    #scheduleAttach() {
+        this.#cancelScheduledAttach();
+        const generation = ++this.#generation;
+        this.#attachIdleId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            this.#attachIdleId = 0;
+            this.#attach(generation);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    #cancelScheduledAttach() {
+        if (this.#attachIdleId) {
+            GLib.source_remove(this.#attachIdleId);
+            this.#attachIdleId = 0;
+        }
     }
 
     async #attach(generation) {
