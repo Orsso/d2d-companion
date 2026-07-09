@@ -1,3 +1,4 @@
+import {Dash} from 'resource:///org/gnome/shell/ui/dash.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {DockPosition} from '../motion/catalog.js';
@@ -21,6 +22,10 @@ export class DashIntegration {
 
     enable(recipe) {
         if (this.#surface)
+            return;
+        // Dock extensions serve their dock as the overview dash; those
+        // icons belong to the dock integration, not to a second controller.
+        if (Main.overview.dash && !(Main.overview.dash instanceof Dash))
             return;
         const box = Main.overview.dash?._box;
         if (!box) {

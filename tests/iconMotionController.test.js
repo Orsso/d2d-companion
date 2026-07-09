@@ -103,6 +103,26 @@ test('hover changes mid-launch still reach the neighbor group', () => {
     assertDeepEqual(hoverEvents, [true, false, true]);
 });
 
+test('press dim settles back even with two controllers on the same bin', () => {
+    const icon = new FakeIcon();
+    const bin = new FakeBin();
+    const recipe = getBuiltInRecipe('subtle');
+    const controllers = [
+        new IconMotionController({icon, bin, position: 'bottom', recipe}),
+        new IconMotionController({icon, bin, position: 'bottom', recipe}),
+    ];
+    for (let click = 0; click < 3; click++) {
+        icon.emit('button-press-event', {get_button: () => 1});
+        icon.pressed = true;
+        icon.emit('notify::pressed');
+        icon.pressed = false;
+        icon.emit('notify::pressed');
+        icon.emit('clicked');
+    }
+    assertEqual(bin.opacity, 255);
+    assertEqual(controllers.length, 2);
+});
+
 test('endLaunch does not replay the hover notification', () => {
     const {controller, icon, hoverEvents} = makeController();
     hoverIcon(icon, true);

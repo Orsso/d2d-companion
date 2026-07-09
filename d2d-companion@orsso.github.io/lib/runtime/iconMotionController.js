@@ -17,7 +17,7 @@ const OWNED_TRANSITIONS = Object.freeze([
 export class IconMotionController {
     #bin;
     #destroyed = false;
-    #dimmed = null;
+    #dimmed = false;
     #hovered = false;
     #icon;
     #launching = false;
@@ -58,6 +58,8 @@ export class IconMotionController {
             translationY: bin.translation_y,
             pivotX,
             pivotY,
+            opacity: bin.opacity,
+            redirect: bin.offscreen_redirect,
         };
 
         this.#signalIds.push(icon.connect('notify::hover', () => this.#syncHover()));
@@ -148,7 +150,7 @@ export class IconMotionController {
             return;
         this.#destroyed = true;
         this.#signalIds = [];
-        this.#dimmed = null;
+        this.#dimmed = false;
         this.#bin = null;
         this.#icon = null;
         this.#onDestroyed(this);
@@ -284,21 +286,20 @@ export class IconMotionController {
     }
 
     // A brightness effect would render offscreen and blur the scaled icon.
+    // Dim from the original opacity, never the current one: a snapshot of an
+    // already dimmed bin would compound and darken the icon for good.
     #syncDim(dim) {
         if (dim > 0) {
             if (!this.#dimmed) {
-                this.#dimmed = {
-                    opacity: this.#bin.opacity,
-                    redirect: this.#bin.offscreen_redirect,
-                };
+                this.#dimmed = true;
                 // Clutter can go offscreen for plain opacity too.
                 this.#bin.offscreen_redirect = 0;
             }
-            this.#bin.opacity = Math.round(this.#dimmed.opacity * (1 - dim));
+            this.#bin.opacity = Math.round(this.#original.opacity * (1 - dim));
         } else if (this.#dimmed) {
-            this.#bin.opacity = this.#dimmed.opacity;
-            this.#bin.offscreen_redirect = this.#dimmed.redirect;
-            this.#dimmed = null;
+            this.#bin.opacity = this.#original.opacity;
+            this.#bin.offscreen_redirect = this.#original.redirect;
+            this.#dimmed = false;
         }
     }
 
