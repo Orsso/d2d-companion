@@ -16,6 +16,7 @@ const DEFINITIONS = Object.freeze([
     definition('custom-hover-duration', 'int', 'hover', 'duration'),
     definition('custom-hover-easing', 'string', 'hover', 'easing'),
     definition('custom-neighbor-scale', 'double', 'hover', 'neighborScale'),
+    definition('custom-neighbor-radius', 'int', 'hover', 'neighborRadius'),
     definition('custom-press-enabled', 'boolean', 'press', 'enabled'),
     definition('custom-press-mode', 'string', 'press', 'mode'),
     definition('custom-press-effect', 'string', 'press', 'effect'),

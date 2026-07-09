@@ -97,6 +97,22 @@ test('stock is a valid launch effect', () => {
         LaunchEffect.STOCK);
 });
 
+test('presets carry the neighbor radius', () => {
+    assertEqual(getBuiltInRecipe(Profile.SUBTLE).hover.neighborRadius, 1);
+    assertEqual(getBuiltInRecipe(Profile.BALANCED).hover.neighborRadius, 1);
+    assertEqual(getBuiltInRecipe(Profile.EXPRESSIVE).hover.neighborRadius, 2);
+});
+
+test('recipe validation clamps the neighbor radius', () => {
+    const invalid = customValuesFromRecipe(getBuiltInRecipe(Profile.BALANCED));
+    invalid.hover.neighborRadius = 9;
+    assertEqual(validateRecipe(invalid).hover.neighborRadius, 3);
+    invalid.hover.neighborRadius = 0;
+    assertEqual(validateRecipe(invalid).hover.neighborRadius, 1);
+    invalid.hover.neighborRadius = 2.4;
+    assertEqual(validateRecipe(invalid).hover.neighborRadius, 2);
+});
+
 test('profile ids stay stable', () => {
     assertEqual(isBuiltInProfile(Profile.SUBTLE), true);
     assertEqual(isBuiltInProfile(Profile.CUSTOM), false);

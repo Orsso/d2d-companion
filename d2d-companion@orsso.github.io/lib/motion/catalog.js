@@ -36,6 +36,9 @@ export const DockPosition = Object.freeze({
     RIGHT: 'right',
 });
 
+// The gschema range mirrors these bounds; keep them in sync.
+export const NeighborRadius = Object.freeze({MIN: 1, MAX: 3});
+
 export const DEFAULT_PROFILE = Profile.SUBTLE;
 
 const COMMON_LAUNCH = Object.freeze({
@@ -58,6 +61,7 @@ const BUILTIN_RECIPES = deepFreeze({
             duration: 130,
             easing: Easing.EASE_OUT_CUBIC,
             neighborScale: 1,
+            neighborRadius: 1,
         },
         press: {
             enabled: true,
@@ -84,6 +88,7 @@ const BUILTIN_RECIPES = deepFreeze({
             duration: 130,
             easing: Easing.EASE_OUT_CUBIC,
             neighborScale: 1,
+            neighborRadius: 1,
         },
         press: {
             enabled: true,
@@ -109,6 +114,7 @@ const BUILTIN_RECIPES = deepFreeze({
             duration: 190,
             easing: Easing.EASE_OUT_BACK,
             neighborScale: 1.08,
+            neighborRadius: 2,
         },
         press: {
             enabled: true,

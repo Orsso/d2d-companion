@@ -5,6 +5,7 @@ import Gtk from 'gi://Gtk';
 import {
     Easing,
     LaunchEffect,
+    NeighborRadius,
     PressEffect,
     PressMode,
 } from '../motion/catalog.js';
@@ -58,6 +59,10 @@ export function buildAdvancedPage(page, controls, editor, state) {
     controls.neighborScale = createScaleRow(
         hover.group, 'Neighbor scale', 1, 1.15, 0.01,
         value => editor.edit('custom-neighbor-scale', value), state);
+    controls.neighborRadius = createSpinRow(
+        hover.group, 'Neighbor radius', NeighborRadius.MIN, NeighborRadius.MAX, 1,
+        value => editor.edit('custom-neighbor-radius', Math.round(value)), state,
+        'Icons on each side that follow the hover');
     holdWhileSliding(controls.hoverScale, hover);
     holdWhileSliding(controls.neighborScale, hover);
 
@@ -157,6 +162,7 @@ export function syncAdvancedPage(settings, controls, recipe) {
     controls.hoverDuration.value = recipe.hover.duration;
     setComboValue(controls.hoverEasing, recipe.hover.easing);
     controls.neighborScale.adjustment.value = recipe.hover.neighborScale;
+    controls.neighborRadius.value = recipe.hover.neighborRadius;
     setComboValue(controls.pressMode, recipe.press.mode);
     setComboValue(controls.pressEffect, recipe.press.effect);
     controls.pressIntensity.adjustment.value = recipe.press.intensity;

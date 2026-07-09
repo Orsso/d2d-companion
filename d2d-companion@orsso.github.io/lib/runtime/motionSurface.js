@@ -1,3 +1,4 @@
+import {NeighborRadius} from '../motion/catalog.js';
 import {LiveRegistry} from './liveRegistry.js';
 
 export class MotionSurface {
@@ -92,10 +93,10 @@ class NeighborGroup {
         if (index === -1)
             return;
         this.#entries.splice(index, 1);
-        if (this.#hovered === controller) {
+        if (this.#hovered === controller)
             this.#hovered = null;
-            this.#syncNeighbors();
-        }
+        // Survivors shift by one index, so their distances change too.
+        this.#syncNeighbors();
     }
 
     setHovered(controller, hovered) {
@@ -118,8 +119,13 @@ class NeighborGroup {
         const hoveredIndex = this.#entries.findIndex(
             entry => entry.controller === this.#hovered);
         for (let index = 0; index < this.#entries.length; index++) {
-            const neighbor = hoveredIndex !== -1 && Math.abs(index - hoveredIndex) === 1;
-            this.#entries[index].controller.setNeighborHover(neighbor);
+            const distance = hoveredIndex === -1
+                ? Infinity
+                : Math.abs(index - hoveredIndex);
+            // Beyond any possible radius the transform is identity; collapse
+            // to Infinity so far icons never see a change to apply.
+            this.#entries[index].controller.setNeighborDistance(
+                distance > NeighborRadius.MAX ? Infinity : distance);
         }
     }
 }

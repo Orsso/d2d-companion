@@ -3,7 +3,7 @@ import St from 'gi://St';
 
 import {DockPosition} from '../motion/catalog.js';
 import {PressInteraction} from '../motion/pressInteraction.js';
-import {resolveIconTransform} from '../motion/transforms.js';
+import {neighborScaleAt, resolveIconTransform} from '../motion/transforms.js';
 import {resolveAnimationMode} from './easing.js';
 import {refreshWidgetStyle} from './styleRefresh.js';
 
@@ -21,7 +21,7 @@ export class IconMotionController {
     #hovered = false;
     #icon;
     #launching = false;
-    #neighborHovered = false;
+    #neighborDistance = Infinity;
     #onDestroyed;
     #onHoverChanged;
     #onMeasured;
@@ -97,10 +97,10 @@ export class IconMotionController {
         this.#apply();
     }
 
-    setNeighborHover(active) {
-        if (this.#neighborHovered === active)
+    setNeighborDistance(distance) {
+        if (this.#neighborDistance === distance)
             return;
-        this.#neighborHovered = active;
+        this.#neighborDistance = distance;
         this.#apply();
     }
 
@@ -126,8 +126,7 @@ export class IconMotionController {
         this.#press.applyStep(false);
         const magnify = !this.#recipe.hover.enabled ? 1
             : this.#hovered ? this.#recipe.hover.scale
-                : this.#neighborHovered ? this.#recipe.hover.neighborScale
-                    : 1;
+                : neighborScaleAt(this.#recipe.hover, this.#neighborDistance);
         if (this.#hovered)
             this.#onHoverChanged(this, false);
         this.#apply(0);
@@ -200,7 +199,7 @@ export class IconMotionController {
             recipe: this.#recipe,
             hovered: this.#hovered,
             launching: this.#launching,
-            neighborHovered: this.#neighborHovered,
+            neighborDistance: this.#neighborDistance,
             pressed: this.#press.pressed,
             animationsEnabled,
             budgetPx: budget ? budget.budgetPx : Infinity,

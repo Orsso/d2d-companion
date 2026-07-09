@@ -3,6 +3,7 @@ import {
     DEFAULT_PROFILE,
     Easing,
     LaunchEffect,
+    NeighborRadius,
     PressEffect,
     PressMode,
     Profile,
@@ -46,6 +47,9 @@ export function validateRecipe(recipe = {}) {
             easing: member(source.hover.easing, EASINGS, fallback.hover.easing),
             neighborScale: clamp(
                 source.hover.neighborScale, 1, 1.15, fallback.hover.neighborScale),
+            neighborRadius: integer(
+                source.hover.neighborRadius, NeighborRadius.MIN,
+                NeighborRadius.MAX, fallback.hover.neighborRadius),
         },
         press: {
             enabled: boolean(source.press.enabled, fallback.press.enabled),

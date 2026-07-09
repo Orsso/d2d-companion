@@ -35,6 +35,7 @@ const IDENTITY = Object.freeze({
 
 const INLINE_ICON_SIZE = 24;
 const INLINE_STEP = INLINE_ICON_SIZE + 10;
+const COUNT_GROW_MS = 250;
 
 const EASINGS = Object.freeze({
     linear: Adw.Easing.LINEAR,
@@ -48,10 +49,10 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     // and demos just that effect.
     _init({recipe, selected = false, effect = null, ...params}) {
         const inline = Boolean(effect);
-        const iconCount = effect === 'hover' ? 3 : 1;
+        const iconCount = effect === 'hover' ? hoverIconCount(recipe) : 1;
         super._init({
             height_request: inline ? 64 : 96,
-            width_request: inline ? iconCount * INLINE_STEP + 22 : -1,
+            width_request: inline ? inlineWidth(iconCount) : -1,
             hexpand: !inline,
             focusable: !inline,
             valign: inline ? Gtk.Align.CENTER : Gtk.Align.FILL,
@@ -60,6 +61,8 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._selected = selected;
         this._effect = effect;
         this._iconCount = iconCount;
+        this._visibleCount = iconCount;
+        this._countAnimation = null;
         this._recipe = this._adoptRecipe(recipe);
         this._held = false;
         this._hovered = false;
@@ -113,6 +116,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._pressed = false;
         this._launching = false;
         this._recipe = this._adoptRecipe(recipe);
+        this._syncIconCount();
         this._motionTransform = this._resolveMotion();
         this._launchTransform = {...IDENTITY};
         this.queue_draw();
@@ -121,9 +125,39 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     // setRecipe without the reset: a running loop just picks the values up.
     updateRecipe(recipe) {
         this._recipe = this._adoptRecipe(recipe);
+        this._syncIconCount();
         if (this._motionAnimation?.state !== Adw.AnimationState.PLAYING)
             this._motionTransform = this._resolveMotion();
         this.queue_draw();
+    }
+
+    _syncIconCount() {
+        if (this._effect !== 'hover')
+            return;
+        const count = hoverIconCount(this._recipe);
+        if (count === this._iconCount)
+            return;
+        this._iconCount = count;
+        this._animateIconCount();
+    }
+
+    // One float drives the frame width and the outer icons' birth scale,
+    // so retargeting mid-flight just re-aims it.
+    _animateIconCount() {
+        // reset() replays the target at its initial value, so capture the
+        // count first.
+        const from = this._visibleCount;
+        this._countAnimation?.reset();
+        const to = this._iconCount;
+        const target = Adw.CallbackAnimationTarget.new(value => {
+            this._visibleCount = from + (to - from) * value;
+            this.width_request = inlineWidth(this._visibleCount);
+            this.queue_draw();
+        });
+        this._countAnimation = Adw.TimedAnimation.new(
+            this, 0, 1, COUNT_GROW_MS, target);
+        this._countAnimation.set_easing(Adw.Easing.EASE_OUT_CUBIC);
+        this._countAnimation.play();
     }
 
     setSelected(selected) {
@@ -133,6 +167,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
 
     stop() {
         this._cancelLoop();
+        this._countAnimation?.skip();
         this._held = false;
         this._pressGeneration++;
         this._motionAnimation?.reset();
@@ -481,15 +516,24 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     }
 
     _drawInline(cr, width, height) {
-        const count = this._iconCount;
+        const count = oddCountFor(this._visibleCount);
         const middle = (count - 1) / 2;
         const iconTop = height - INLINE_ICON_SIZE - 8;
         const first = width / 2 - middle * INLINE_STEP;
         const colorOffset = (ICON_COLORS.length - count) >> 1;
         for (let i = 0; i < count; i++) {
+            const birth = iconBirth(this._visibleCount, Math.abs(i - middle));
+            if (birth === 0)
+                continue;
             const transform = this._iconTransform(i, middle);
+            const color = ICON_COLORS[
+                (i + colorOffset + ICON_COLORS.length) % ICON_COLORS.length];
             drawIcon(cr, first + i * INLINE_STEP, iconTop, INLINE_ICON_SIZE,
-                ICON_COLORS[i + colorOffset], transform);
+                color, {
+                    ...transform,
+                    scaleX: transform.scaleX * birth,
+                    scaleY: transform.scaleY * birth,
+                });
         }
     }
 
@@ -506,15 +550,12 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         const distance = Math.abs(index - middle);
         if (distance === 0)
             return combineTransforms(this._motionTransform, this._launchTransform);
-        if (distance === 1) {
-            return resolveIconTransform({
-                position: 'bottom',
-                recipe: this._recipe,
-                launching: this._launching,
-                neighborHovered: this._hovered,
-            });
-        }
-        return IDENTITY;
+        return resolveIconTransform({
+            position: 'bottom',
+            recipe: this._recipe,
+            launching: this._launching,
+            neighborDistance: this._hovered ? distance : Infinity,
+        });
     }
 });
 
@@ -527,6 +568,26 @@ const ICON_COLORS = Object.freeze([
     [0.30, 0.74, 0.56],
     [0.66, 0.45, 0.86],
 ]);
+
+function hoverIconCount(recipe) {
+    return 2 * recipe.hover.neighborRadius + 1;
+}
+
+function inlineWidth(count) {
+    return Math.round(count * INLINE_STEP + 22);
+}
+
+// The pair at distance d only lives while the count crosses 2d → 2d + 1,
+// so it finishes shrinking before the frame edge reaches its slot.
+function iconBirth(visibleCount, distance) {
+    if (distance === 0)
+        return 1;
+    return Math.min(1, Math.max(0, visibleCount - 2 * distance));
+}
+
+function oddCountFor(value) {
+    return 2 * Math.ceil((value - 1) / 2) + 1;
+}
 
 function combineTransforms(base, transient) {
     return {

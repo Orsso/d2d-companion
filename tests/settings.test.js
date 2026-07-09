@@ -232,6 +232,14 @@ test('settings editor uses the custom-to-preset path', () => {
     assertEqual(settings.values['custom-hover-scale'], 1.22);
 });
 
+test('neighbor radius round-trips through custom settings', () => {
+    const settings = new FakeSettings(Profile.BALANCED);
+    editCustomSetting(settings, 'custom-neighbor-radius', 2);
+    assertEqual(settings.values['motion-profile'], Profile.CUSTOM);
+    assertEqual(settings.values['custom-neighbor-radius'], 2);
+    assertEqual(readActiveRecipe(settings).hover.neighborRadius, 2);
+});
+
 test('settings editor reset restores the default custom values', () => {
     const settings = new FakeSettings(Profile.CUSTOM);
     const editor = new SettingsEditor(settings);

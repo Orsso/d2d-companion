@@ -49,7 +49,7 @@ class FakeController {
     constructor(options) {
         this.options = options;
         this.recipes = [];
-        this.neighbor = false;
+        this.neighbor = null;
         this.refreshCount = 0;
         this.disposeCount = 0;
     }
@@ -58,8 +58,8 @@ class FakeController {
         this.recipes.push(recipe);
     }
 
-    setNeighborHover(active) {
-        this.neighbor = active;
+    setNeighborDistance(distance) {
+        this.neighbor = distance;
     }
 
     refreshStyle() {
@@ -174,21 +174,40 @@ test('refreshStyles touches every controller', () => {
     assertDeepEqual(controllers.map(c => c.refreshCount), [1, 1]);
 });
 
-test('hovering an icon raises only its direct neighbors', () => {
+test('hovering an icon sends each controller its distance', () => {
     const {surface, controllers} = makeSurface();
     const {box} = makeBox(4);
     surface.addBox(box, 'bottom');
     controllers[1].options.onHoverChanged(controllers[1], true);
-    assertDeepEqual(controllers.map(c => c.neighbor), [true, false, true, false]);
+    assertDeepEqual(controllers.map(c => c.neighbor), [1, 0, 1, 2]);
 });
 
-test('unhover clears the neighbors', () => {
+test('unhover pushes every distance to infinity', () => {
     const {surface, controllers} = makeSurface();
     const {box} = makeBox(3);
     surface.addBox(box, 'bottom');
     controllers[1].options.onHoverChanged(controllers[1], true);
     controllers[1].options.onHoverChanged(controllers[1], false);
-    assertDeepEqual(controllers.map(c => c.neighbor), [false, false, false]);
+    assertEqual(controllers.every(c => c.neighbor === Infinity), true);
+});
+
+test('distances beyond the maximum radius collapse to infinity', () => {
+    const {surface, controllers} = makeSurface();
+    const {box} = makeBox(6);
+    surface.addBox(box, 'bottom');
+    controllers[0].options.onHoverChanged(controllers[0], true);
+    assertEqual(controllers[3].neighbor, 3);
+    assertEqual(controllers[4].neighbor, Infinity);
+    assertEqual(controllers[5].neighbor, Infinity);
+});
+
+test('removing a non-hovered icon resyncs the distances', () => {
+    const {surface, controllers} = makeSurface();
+    const {box, icons} = makeBox(4);
+    surface.addBox(box, 'bottom');
+    controllers[2].options.onHoverChanged(controllers[2], true);
+    icons[1].destroy();
+    assertEqual(controllers[0].neighbor, 1);
 });
 
 test('a destroyed icon leaves the neighbor group', () => {
@@ -197,7 +216,7 @@ test('a destroyed icon leaves the neighbor group', () => {
     surface.addBox(box, 'bottom');
     icons[1].destroy();
     controllers[0].options.onHoverChanged(controllers[0], true);
-    assertEqual(controllers[2].neighbor, true);
+    assertEqual(controllers[2].neighbor, 1);
 });
 
 test('dispose disposes controllers and stops watching the box', () => {

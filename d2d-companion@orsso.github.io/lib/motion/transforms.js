@@ -118,11 +118,20 @@ export function fitHoverToBudget(
     };
 }
 
+// Linear falloff: full neighbor scale next to the hover, fading to
+// identity past the radius.
+export function neighborScaleAt(hover, distance) {
+    if (!(distance >= 1) || distance > hover.neighborRadius)
+        return 1;
+    const weight = (hover.neighborRadius - distance + 1) / hover.neighborRadius;
+    return 1 + (hover.neighborScale - 1) * weight;
+}
+
 export function resolveIconTransform({
     position = DockPosition.BOTTOM,
     recipe,
     hovered = false,
-    neighborHovered = false,
+    neighborDistance = Infinity,
     pressed = false,
     launching = false,
     animationsEnabled = true,
@@ -144,8 +153,8 @@ export function resolveIconTransform({
     const hoverEnabled = recipe.hover.enabled && !launching;
     const hoverScale = hoverEnabled && hovered
         ? recipe.hover.scale
-        : hoverEnabled && neighborHovered
-            ? recipe.hover.neighborScale
+        : hoverEnabled
+            ? neighborScaleAt(recipe.hover, neighborDistance)
             : 1;
     const lift = hoverEnabled && hovered ? recipe.hover.lift : 0;
     const pressIntensity = recipe.press.enabled && pressed

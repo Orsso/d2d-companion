@@ -12,6 +12,7 @@ import {
     hoverIntroScale,
     launchDuration,
     launchRepeatPause,
+    neighborScaleAt,
     resolveIconTransform,
     resolvePressTransform,
     sampleLaunchSegments,
@@ -224,11 +225,43 @@ test('neighbor response uses only the configured neighbor scale', () => {
     const transform = resolveIconTransform({
         position: 'bottom',
         recipe,
-        neighborHovered: true,
+        neighborDistance: 1,
     });
     assertEqual(transform.scaleX, recipe.hover.neighborScale);
     assertEqual(transform.scaleY, recipe.hover.neighborScale);
     assertEqual(transform.translationY, 0);
+});
+
+test('neighbor falloff is full at distance one and linear outward', () => {
+    const hover = {neighborScale: 1.12, neighborRadius: 3};
+    assertClose(neighborScaleAt(hover, 1), 1.12);
+    assertClose(neighborScaleAt(hover, 2), 1.08);
+    assertClose(neighborScaleAt(hover, 3), 1.04);
+    assertEqual(neighborScaleAt(hover, 4), 1);
+});
+
+test('radius one keeps the legacy single-neighbor behavior', () => {
+    const hover = {neighborScale: 1.08, neighborRadius: 1};
+    assertClose(neighborScaleAt(hover, 1), 1.08);
+    assertEqual(neighborScaleAt(hover, 2), 1);
+    assertEqual(neighborScaleAt(hover, 0), 1);
+    assertEqual(neighborScaleAt(hover, Infinity), 1);
+});
+
+test('resolved transform applies the falloff to far neighbors', () => {
+    const recipe = getBuiltInRecipe('expressive');
+    recipe.hover.neighborRadius = 2;
+    const transform = resolveIconTransform({
+        position: 'bottom',
+        recipe,
+        neighborDistance: 2,
+    });
+    assertClose(transform.scaleX, 1 + (recipe.hover.neighborScale - 1) / 2);
+    assertEqual(resolveIconTransform({
+        position: 'bottom',
+        recipe,
+        neighborDistance: 3,
+    }).scaleX, 1);
 });
 
 test('disabled system animations return the identity transform', () => {
