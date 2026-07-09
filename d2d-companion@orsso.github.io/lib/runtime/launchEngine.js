@@ -15,6 +15,7 @@ import {
     hoverIntroScale,
     launchRepeatPause,
     shouldRepeatLaunch,
+    shouldRetreatOnHandoff,
 } from '../motion/transforms.js';
 import {DeferredLaunchEnds} from './deferredLaunchEnds.js';
 import {resolveAnimationMode} from './easing.js';
@@ -306,9 +307,14 @@ export class LaunchEngine {
         session.target.opacity = session.originalOpacity;
         // No icon to hand back to, or the overview is taking it away:
         // retreat toward the hidden dash instead of settling into it.
-        const dashClosing = !Main.overview.visibleTarget &&
-            Main.overview.dash?.contains(session.target);
-        if (!session.target.mapped || dashClosing) {
+        const retreat = shouldRetreatOnHandoff({
+            targetMapped: session.target.mapped,
+            overviewVisible: Main.overview.visible,
+            overviewVisibleTarget: Main.overview.visibleTarget,
+            dashContainsTarget:
+                !!Main.overview.dash?.contains(session.target),
+        });
+        if (retreat) {
             const {outward} = getOrientation(session.controller.position);
             const [width, height] = session.clone.get_transformed_size();
             session.clone.ease({

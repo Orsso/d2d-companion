@@ -221,6 +221,19 @@ export function shouldRepeatLaunch({
     return wasLaunching && repeat && !appRunning && elapsed < maxDuration;
 }
 
+export function shouldRetreatOnHandoff({
+    targetMapped,
+    overviewVisible,
+    overviewVisibleTarget,
+    dashContainsTarget,
+}) {
+    // Dock extensions serve their dock as Main.overview.dash: only trust
+    // dash membership while the overview is on its way out.
+    if (!targetMapped)
+        return true;
+    return overviewVisible && !overviewVisibleTarget && dashContainsTarget;
+}
+
 export function launchRepeatPause(state) {
     if (!shouldRepeatLaunch(state))
         return 0;

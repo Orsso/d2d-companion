@@ -17,6 +17,7 @@ import {
     resolvePressTransform,
     sampleLaunchSegments,
     shouldRepeatLaunch,
+    shouldRetreatOnHandoff,
 } from '../d2d-companion@orsso.github.io/lib/motion/transforms.js';
 
 test('bottom orientation grows upward', () => {
@@ -333,6 +334,42 @@ test('cold launch repetition continues only while all conditions hold', () => {
         repeat: true,
         elapsed: 100,
         maxDuration: 10000,
+    }), false);
+});
+
+test('handoff retreats when the launch icon is gone', () => {
+    assertEqual(shouldRetreatOnHandoff({
+        targetMapped: false,
+        overviewVisible: false,
+        overviewVisibleTarget: false,
+        dashContainsTarget: true,
+    }), true);
+});
+
+test('handoff settles into a dock on the desktop', () => {
+    assertEqual(shouldRetreatOnHandoff({
+        targetMapped: true,
+        overviewVisible: false,
+        overviewVisibleTarget: false,
+        dashContainsTarget: true,
+    }), false);
+});
+
+test('handoff retreats while the overview takes the dash away', () => {
+    assertEqual(shouldRetreatOnHandoff({
+        targetMapped: true,
+        overviewVisible: true,
+        overviewVisibleTarget: false,
+        dashContainsTarget: true,
+    }), true);
+});
+
+test('handoff settles into the dash of a steady overview', () => {
+    assertEqual(shouldRetreatOnHandoff({
+        targetMapped: true,
+        overviewVisible: true,
+        overviewVisibleTarget: true,
+        dashContainsTarget: true,
     }), false);
 });
 
