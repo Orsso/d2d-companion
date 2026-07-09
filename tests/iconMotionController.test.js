@@ -40,6 +40,9 @@ class FakeBin {
         this.translation_y = 0;
         this.opacity = 255;
         this.offscreen_redirect = 0;
+        this.eases = 0;
+        this.parentProbes = 0;
+        this.removedTransitions = 0;
     }
 
     get_pivot_point() {
@@ -54,25 +57,31 @@ class FakeBin {
     }
 
     get_parent() {
+        this.parentProbes++;
         return null;
     }
 
-    remove_transition() {}
+    remove_transition() {
+        this.removedTransitions++;
+    }
 
-    ease() {}
+    ease() {
+        this.eases++;
+    }
 }
 
-function makeController() {
+function makeController(profile = 'expressive') {
     const hoverEvents = [];
     const icon = new FakeIcon();
+    const bin = new FakeBin();
     const controller = new IconMotionController({
         icon,
-        bin: new FakeBin(),
+        bin,
         position: 'bottom',
-        recipe: getBuiltInRecipe('expressive'),
+        recipe: getBuiltInRecipe(profile),
         onHoverChanged: (_controller, hovered) => hoverEvents.push(hovered),
     });
-    return {controller, icon, hoverEvents};
+    return {controller, icon, bin, hoverEvents};
 }
 
 function hoverIcon(icon, hovered) {
@@ -121,6 +130,48 @@ test('press dim settles back even with two controllers on the same bin', () => {
     }
     assertEqual(bin.opacity, 255);
     assertEqual(controllers.length, 2);
+});
+
+test('hover with an unchanged transform does not ease', () => {
+    const {icon, bin} = makeController('subtle');
+    hoverIcon(icon, true);
+    hoverIcon(icon, false);
+    hoverIcon(icon, true);
+    assertEqual(bin.eases, 0);
+});
+
+test('press dim lands without easing an unchanged transform', () => {
+    const {icon, bin} = makeController('subtle');
+    icon.emit('button-press-event', {get_button: () => 1});
+    assertEqual(bin.opacity, 228);
+    assertEqual(bin.eases, 0);
+});
+
+test('setRecipe reapplies even when the transform is unchanged', () => {
+    const {controller, bin} = makeController('subtle');
+    controller.setRecipe(getBuiltInRecipe('subtle'));
+    assertEqual(bin.eases, 1);
+});
+
+test('beginLaunch snaps instantly even when the transform is unchanged', () => {
+    const {controller, icon, bin} = makeController('subtle');
+    hoverIcon(icon, true);
+    controller.beginLaunch(true);
+    assertEqual(bin.removedTransitions, 4);
+});
+
+test('neighbor updates without a neighbor effect skip the transform work', () => {
+    const {controller, bin} = makeController('balanced');
+    controller.setNeighborDistance(1);
+    controller.setNeighborDistance(Infinity);
+    assertEqual(bin.parentProbes, 0);
+    assertEqual(bin.eases, 0);
+});
+
+test('neighbor updates with a neighbor effect still ease', () => {
+    const {controller, bin} = makeController('expressive');
+    controller.setNeighborDistance(1);
+    assertEqual(bin.eases, 1);
 });
 
 test('endLaunch does not replay the hover notification', () => {

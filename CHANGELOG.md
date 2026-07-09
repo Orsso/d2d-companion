@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed fast pointer sweeps creating hundreds of animations that move
+  nothing, felt as lag on some setups (#5). Thanks to @rotntake for the
+  report.
 - Fixed the neighbor hover dropping for an instant when launching an app.
 - Fixed repeated clicks with the Dim press effect fading dock icons out
   for good (#4). Thanks to @rotntake for the report.

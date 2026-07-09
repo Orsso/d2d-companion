@@ -20,6 +20,7 @@ export class IconMotionController {
     #dimmed = false;
     #hovered = false;
     #icon;
+    #lastApplied = null;
     #launching = false;
     #neighborDistance = Infinity;
     #onDestroyed;
@@ -61,6 +62,13 @@ export class IconMotionController {
             opacity: bin.opacity,
             redirect: bin.offscreen_redirect,
         };
+        // The bin starts at rest, so the first apply toward rest skips.
+        this.#lastApplied = {
+            scale_x: this.#original.scaleX,
+            scale_y: this.#original.scaleY,
+            translation_x: this.#original.translationX,
+            translation_y: this.#original.translationY,
+        };
 
         this.#signalIds.push(icon.connect('notify::hover', () => this.#syncHover()));
         this.#signalIds.push(icon.connect('notify::urgent', () => {
@@ -96,6 +104,7 @@ export class IconMotionController {
     setRecipe(recipe) {
         this.#recipe = recipe;
         this.#press.reset();
+        this.#lastApplied = null;
         this.#apply();
     }
 
@@ -103,6 +112,11 @@ export class IconMotionController {
         if (this.#neighborDistance === distance)
             return;
         this.#neighborDistance = distance;
+        // Distance only feeds neighborScaleAt; without a neighbor effect it
+        // cannot change the transform.
+        const {hover} = this.#recipe;
+        if (!hover.enabled || hover.neighborScale === 1)
+            return;
         this.#apply();
     }
 
@@ -215,8 +229,19 @@ export class IconMotionController {
         };
 
         this.#syncDim(transform.dim);
-        this.#removeOwnedTransitions();
         this.#bin.set_pivot_point(...(this.#urgent ? [0.5, 0.5] : transform.pivot));
+        // Same target: keep any in-flight transition instead of restarting
+        // it. Instant applies must settle the bin now.
+        const last = this.#lastApplied;
+        if (duration > 0 && last &&
+            last.scale_x === properties.scale_x &&
+            last.scale_y === properties.scale_y &&
+            last.translation_x === properties.translation_x &&
+            last.translation_y === properties.translation_y)
+            return;
+        this.#lastApplied = properties;
+
+        this.#removeOwnedTransitions();
         if (duration === 0) {
             Object.assign(this.#bin, properties);
             return;
