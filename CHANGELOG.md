@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Fixed the neighbor hover dropping for an instant when launching an app.
+
+## 0.1.0-beta.4
+
+- Added sliders and live previews for every effect setting in the More page.
+- Added an adjustable neighbor hover radius with a linear falloff.
+- The Expressive preset now reaches two neighbors.
+- Fixed reattaching to Ubuntu Dock after a live toggle.
+- Tested on GNOME Shell 46 to 50, Dash to Dock 90 to 105, and Ubuntu Dock
+  on Ubuntu 24.04 and 26.04.
+
 ## 0.1.0-beta.3
 
 - Added Ubuntu Dock support (#1). Thanks to @0xHertz for the report and

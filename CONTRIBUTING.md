@@ -13,8 +13,8 @@ make check
 ```
 
 `make pack` builds the archive, `make install` installs it locally. The tests
-only cover the pure logic. Anything that touches the dock or the overview
-dash has to be tried in a real session.
+run headless. Anything that touches the dock or the overview dash has to be
+tried in a real session.
 
 ## Code Map
 
