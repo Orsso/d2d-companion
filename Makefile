@@ -10,8 +10,10 @@ check: lint test schema
 lint:
 	./node_modules/.bin/eslint $(UUID) tests eslint.config.js
 
+# St and Clutter typelibs ship outside the default search path.
 test:
-	gjs -m tests/run.js
+	paths="$$(ls -d /usr/lib*/gnome-shell /usr/lib*/mutter-* /usr/lib/*/gnome-shell /usr/lib/*/mutter-* 2>/dev/null | paste -sd:)"; \
+	GI_TYPELIB_PATH="$$paths" LD_LIBRARY_PATH="$$paths" gjs -m tests/run.js
 	bash tests/packageVerifier.test.sh
 
 schema:

@@ -127,8 +127,6 @@ export class IconMotionController {
         const magnify = !this.#recipe.hover.enabled ? 1
             : this.#hovered ? this.#recipe.hover.scale
                 : neighborScaleAt(this.#recipe.hover, this.#neighborDistance);
-        if (this.#hovered)
-            this.#onHoverChanged(this, false);
         this.#apply(0);
         return {
             active: true,
@@ -142,8 +140,6 @@ export class IconMotionController {
         if (this.#destroyed || !this.#launching)
             return;
         this.#launching = false;
-        if (this.#hovered)
-            this.#onHoverChanged(this, true);
         this.#apply(this.#recipe.hover.duration);
     }
 
@@ -183,9 +179,11 @@ export class IconMotionController {
             this.#reportBudget();
         if (!hovered)
             this.#press.reset();
+        // The group tracks the pointer even mid-launch; only the visual
+        // application waits for the launch to end.
+        this.#onHoverChanged(this, hovered);
         if (this.#launching)
             return;
-        this.#onHoverChanged(this, hovered);
         this.#apply();
     }
 
