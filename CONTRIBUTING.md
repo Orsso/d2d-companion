@@ -52,5 +52,8 @@ gnome-extensions info d2d-companion@orsso.github.io
 journalctl --user -b --no-pager | rg 'd2d-companion|JS ERROR|CRITICAL'
 ```
 
+On Ubuntu Dock, use `ubuntu-dock@ubuntu.com` instead of the Dash to Dock
+id. Without either dock, skip that line.
+
 Mention whether it also happens with other extensions and custom themes
 disabled. That helps a lot for visual bugs.
