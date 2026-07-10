@@ -306,6 +306,31 @@ test('setRecipe with a pending hover flush lands on the final state', () => {
     assertEqual(bin.eases, 1);
 });
 
+test('applies toward identity skip the geometry measure', () => {
+    const {controller, icon, bin} = makeMeasuredController('expressive');
+    hoverIcon(icon, true);
+    controller.applyHoverState();
+    const measures = bin.measures;
+    hoverIcon(icon, false);
+    controller.applyHoverState();
+    assertEqual(bin.measures, measures);
+});
+
+test('a press without hover reach skips the geometry measure', () => {
+    const {icon, bin} = makeMeasuredController('subtle');
+    icon.emit('button-press-event', {get_button: () => 1});
+    assertEqual(bin.measures, 0);
+    assertEqual(bin.opacity, 228);
+});
+
+test('a subtle hover still measures once to publish the budget', () => {
+    const {controller, icon, bin, measured} = makeMeasuredController('subtle');
+    hoverIcon(icon, true);
+    controller.applyHoverState();
+    assertEqual(measured.length, 1);
+    assertEqual(bin.measures, 1);
+});
+
 test('endLaunch does not replay the hover notification', () => {
     const {controller, icon, hoverEvents} = makeController();
     hoverIcon(icon, true);

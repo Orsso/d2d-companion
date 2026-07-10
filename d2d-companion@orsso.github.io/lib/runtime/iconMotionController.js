@@ -3,7 +3,7 @@ import St from 'gi://St';
 
 import {DockPosition} from '../motion/catalog.js';
 import {PressInteraction} from '../motion/pressInteraction.js';
-import {neighborScaleAt, resolveIconTransform} from '../motion/transforms.js';
+import {hoverNeedsBudget, neighborScaleAt, resolveIconTransform} from '../motion/transforms.js';
 import {resolveAnimationMode} from './easing.js';
 import {refreshWidgetStyle} from './styleRefresh.js';
 
@@ -210,7 +210,16 @@ export class IconMotionController {
         if (this.#destroyed)
             return;
         const animationsEnabled = St.Settings.get().enable_animations;
-        const budget = this.#measureBudget();
+        // A pending report measures anyway to feed the prefs readout.
+        const budget = this.#pendingBudgetReport ||
+            (animationsEnabled && hoverNeedsBudget({
+                recipe: this.#recipe,
+                hovered: this.#hovered,
+                launching: this.#launching,
+                neighborDistance: this.#neighborDistance,
+            }))
+            ? this.#measureBudget()
+            : null;
         if (this.#pendingBudgetReport) {
             this.#pendingBudgetReport = false;
             if (budget)

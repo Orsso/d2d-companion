@@ -10,6 +10,7 @@ import {
     getOrientation,
     hoverIntroLift,
     hoverIntroScale,
+    hoverNeedsBudget,
     launchDuration,
     launchRepeatPause,
     neighborScaleAt,
@@ -496,4 +497,27 @@ test('resolved transform fits the hovered reach within the dock budget', () => {
     });
     const liftPx = -transform.translationY;
     assertClose(48 * (transform.scaleY - 1) + liftPx, 4);
+});
+
+test('the budget is needed only when the hover reach can move', () => {
+    const expressive = getBuiltInRecipe('expressive');
+    assertEqual(hoverNeedsBudget(
+        {recipe: expressive, hovered: true}), true);
+    assertEqual(hoverNeedsBudget(
+        {recipe: expressive, hovered: false, neighborDistance: 1}), true);
+    assertEqual(hoverNeedsBudget(
+        {recipe: expressive, hovered: false, neighborDistance: 3}), false);
+    assertEqual(hoverNeedsBudget(
+        {recipe: expressive, hovered: true, launching: true}), false);
+    assertEqual(hoverNeedsBudget(
+        {recipe: getBuiltInRecipe('subtle'), hovered: true}), false);
+});
+
+test('a lift alone still needs the budget', () => {
+    const recipe = getBuiltInRecipe('expressive');
+    recipe.hover.scale = 1;
+    recipe.hover.lift = 5;
+    assertEqual(hoverNeedsBudget({recipe, hovered: true}), true);
+    recipe.hover.lift = 0;
+    assertEqual(hoverNeedsBudget({recipe, hovered: true}), false);
 });

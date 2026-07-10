@@ -127,6 +127,21 @@ export function neighborScaleAt(hover, distance) {
     return 1 + (hover.neighborScale - 1) * weight;
 }
 
+// Only a hover reach (scale growth or lift) is fitted to the budget.
+export function hoverNeedsBudget({
+    recipe,
+    hovered = false,
+    launching = false,
+    neighborDistance = Infinity,
+}) {
+    const {hover} = recipe;
+    if (!hover.enabled || launching)
+        return false;
+    if (hovered)
+        return hover.scale !== 1 || hover.lift !== 0;
+    return neighborScaleAt(hover, neighborDistance) !== 1;
+}
+
 export function resolveIconTransform({
     position = DockPosition.BOTTOM,
     recipe,
