@@ -27,6 +27,7 @@ export class IconMotionController {
     #onHoverChanged;
     #onMeasured;
     #original;
+    #pendingBudgetReport = false;
     #position;
     #press = new PressInteraction();
     #recipe;
@@ -108,16 +109,17 @@ export class IconMotionController {
         this.#apply();
     }
 
+    // State only; reports whether the change can alter the transform, so
+    // the group knows to apply this controller at the next flush.
     setNeighborDistance(distance) {
         if (this.#neighborDistance === distance)
-            return;
+            return false;
         this.#neighborDistance = distance;
         // Distance only feeds neighborScaleAt; without a neighbor effect it
-        // cannot change the transform.
+        // cannot change the transform, and neither hover nor launch reads it.
         const {hover} = this.#recipe;
-        if (!hover.enabled || hover.neighborScale === 1)
-            return;
-        this.#apply();
+        return hover.enabled && hover.neighborScale !== 1 &&
+            !this.#hovered && !this.#launching;
     }
 
     refreshStyle() {
@@ -185,22 +187,26 @@ export class IconMotionController {
         this.#icon = null;
     }
 
+    // The launch visual owns the bin until endLaunch reapplies; hover flips
+    // keep feeding the group meanwhile.
+    applyHoverState() {
+        if (this.#launching)
+            return;
+        this.#apply();
+    }
+
+    // State only: the neighbor group schedules the visual application.
     #syncHover() {
         const hovered = Boolean(this.#icon.hover);
         if (this.#hovered === hovered)
             return;
         this.#hovered = hovered;
-        // Hover gives us a reliable allocated icon to measure.
-        if (hovered)
-            this.#reportBudget();
+        // Hover means a reliably allocated icon; let the next apply measure
+        // it once and publish. A hover gone before that apply is worthless.
+        this.#pendingBudgetReport = hovered;
         if (!hovered)
             this.#press.reset();
-        // The group tracks the pointer even mid-launch; only the visual
-        // application waits for the launch to end.
         this.#onHoverChanged(this, hovered);
-        if (this.#launching)
-            return;
-        this.#apply();
     }
 
     #apply(durationOverride = null) {
@@ -208,6 +214,11 @@ export class IconMotionController {
             return;
         const animationsEnabled = St.Settings.get().enable_animations;
         const budget = this.#measureBudget();
+        if (this.#pendingBudgetReport) {
+            this.#pendingBudgetReport = false;
+            if (budget)
+                this.#onMeasured(budget);
+        }
         const transform = resolveIconTransform({
             position: this.#position,
             recipe: this.#recipe,
@@ -258,12 +269,6 @@ export class IconMotionController {
     // Probe used before the first hover.
     measure() {
         return this.#destroyed ? null : this.#measureBudget();
-    }
-
-    #reportBudget() {
-        const budget = this.#measureBudget();
-        if (budget)
-            this.#onMeasured(budget);
     }
 
     // Measure the room between the icon and the dock clip.

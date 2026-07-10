@@ -1,3 +1,4 @@
+import Meta from 'gi://Meta';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
@@ -13,13 +14,25 @@ export default class D2DCompanionExtension extends Extension {
         this._settings = this.getSettings();
         this._recipe = readActiveRecipe(this._settings);
 
+        // Hover work coalesces into one flush right before the next paint.
+        const laters = global.compositor.get_laters();
+        this._frameScheduler = {
+            schedule: callback => laters.add(Meta.LaterType.BEFORE_REDRAW, () => {
+                callback();
+                return false;
+            }),
+            cancel: id => laters.remove(id),
+        };
+
         this._dockIntegration = new DockIntegration({
             controllerFactory: options => new IconMotionController(options),
             publishMeasurement: (budget, iconSize) =>
                 this._publishMeasurement(budget, iconSize),
+            scheduler: this._frameScheduler,
         });
         this._dashIntegration = new DashIntegration({
             controllerFactory: options => new IconMotionController(options),
+            scheduler: this._frameScheduler,
         });
 
         const refreshDockStyles = () => {
@@ -89,6 +102,7 @@ export default class D2DCompanionExtension extends Extension {
         this._dashIntegration = null;
         this._dockIntegration?.disable();
         this._dockIntegration = null;
+        this._frameScheduler = null;
         this._recipe = null;
         this._settings = null;
     }

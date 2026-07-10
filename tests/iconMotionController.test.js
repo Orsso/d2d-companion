@@ -65,9 +65,52 @@ class FakeBin {
         this.removedTransitions++;
     }
 
-    ease() {
+    ease(props) {
         this.eases++;
+        this.lastEase = props;
     }
+}
+
+// A bin with a clipped grandparent, enough for #measureBudget to succeed.
+class MeasurableBin extends FakeBin {
+    constructor() {
+        super();
+        this.measures = 0;
+        this._clip = {
+            has_clip: true,
+            get_clip: () => [0, 0, 1000, 200],
+            get_transformed_position: () => [0, 800],
+            get_parent: () => null,
+        };
+        this._parent = {
+            has_clip: false,
+            get_transformed_position: () => [0, 900],
+            get_parent: () => this._clip,
+        };
+    }
+
+    get_parent() {
+        return this._parent;
+    }
+
+    get_allocation_box() {
+        this.measures++;
+        return {x1: 10, y1: 20, x2: 58, y2: 68};
+    }
+}
+
+function makeMeasuredController(profile = 'expressive') {
+    const measured = [];
+    const icon = new FakeIcon();
+    const bin = new MeasurableBin();
+    const controller = new IconMotionController({
+        icon,
+        bin,
+        position: 'bottom',
+        recipe: getBuiltInRecipe(profile),
+        onMeasured: measurement => measured.push(measurement),
+    });
+    return {controller, icon, bin, measured};
 }
 
 function makeController(profile = 'expressive') {
@@ -132,6 +175,14 @@ test('press dim settles back even with two controllers on the same bin', () => {
     assertEqual(controllers.length, 2);
 });
 
+test('a hover flip alone does not ease until applyHoverState', () => {
+    const {controller, icon, bin} = makeController('expressive');
+    hoverIcon(icon, true);
+    assertEqual(bin.eases, 0);
+    controller.applyHoverState();
+    assertEqual(bin.eases, 1);
+});
+
 test('hover with an unchanged transform does not ease', () => {
     const {icon, bin} = makeController('subtle');
     hoverIcon(icon, true);
@@ -168,9 +219,80 @@ test('neighbor updates without a neighbor effect skip the transform work', () =>
     assertEqual(bin.eases, 0);
 });
 
-test('neighbor updates with a neighbor effect still ease', () => {
+test('setNeighborDistance reports a change without applying it', () => {
     const {controller, bin} = makeController('expressive');
-    controller.setNeighborDistance(1);
+    assertEqual(controller.setNeighborDistance(1), true);
+    assertEqual(bin.eases, 0);
+    assertEqual(controller.setNeighborDistance(1), false);
+});
+
+test('distance changes cannot affect a hovered or launching icon', () => {
+    const {controller, icon} = makeController('expressive');
+    hoverIcon(icon, true);
+    assertEqual(controller.setNeighborDistance(1), false);
+    hoverIcon(icon, false);
+    controller.beginLaunch(true);
+    assertEqual(controller.setNeighborDistance(2), false);
+    controller.endLaunch();
+    assertEqual(controller.setNeighborDistance(3), true);
+});
+
+test('applyHoverState is inert during a launch', () => {
+    const {controller, icon, bin} = makeController('expressive');
+    hoverIcon(icon, true);
+    controller.beginLaunch(true);
+    const probes = bin.parentProbes;
+    const eases = bin.eases;
+    hoverIcon(icon, false);
+    controller.applyHoverState();
+    assertEqual(bin.parentProbes, probes);
+    assertEqual(bin.eases, eases);
+});
+
+test('the hover budget is published once by the next apply', () => {
+    const {controller, icon, bin, measured} = makeMeasuredController();
+    hoverIcon(icon, true);
+    assertEqual(measured.length, 0);
+    assertEqual(bin.measures, 0);
+    controller.applyHoverState();
+    assertEqual(measured.length, 1);
+    assertEqual(bin.measures, 1);
+    assertEqual(measured[0].budgetPx, 120);
+    controller.applyHoverState();
+    assertEqual(measured.length, 1);
+});
+
+test('a hover that leaves before the apply publishes nothing', () => {
+    const {controller, icon, measured} = makeMeasuredController();
+    hoverIcon(icon, true);
+    hoverIcon(icon, false);
+    controller.applyHoverState();
+    assertEqual(measured.length, 0);
+});
+
+test('a press stays immediate while a hover flush is pending', () => {
+    const {icon, bin} = makeController('subtle');
+    hoverIcon(icon, true);
+    icon.emit('button-press-event', {get_button: () => 1});
+    assertEqual(bin.opacity, 228);
+});
+
+test('beginLaunch snaps immediately while a hover flush is pending', () => {
+    const {controller, icon, bin} = makeController('expressive');
+    hoverIcon(icon, true);
+    const result = controller.beginLaunch(true);
+    assertEqual(result.active, true);
+    assertEqual(bin.removedTransitions, 4);
+});
+
+test('setRecipe with a pending hover flush lands on the final state', () => {
+    const {controller, icon, bin} = makeController('expressive');
+    hoverIcon(icon, true);
+    controller.setRecipe(getBuiltInRecipe('expressive'));
+    assertEqual(bin.eases, 1);
+    assertClose(bin.lastEase.scale_x, 1.22);
+    // The late flush recomputes the same target and keeps the transition.
+    controller.applyHoverState();
     assertEqual(bin.eases, 1);
 });
 

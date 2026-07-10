@@ -19,13 +19,15 @@ export class DockIntegration {
     #managerSignals = [];
     #measureId = 0;
     #publishMeasurement;
+    #scheduler;
     #stateChangedId = 0;
     #surface = null;
     #warnings = new Set();
 
-    constructor({controllerFactory, publishMeasurement = () => {}}) {
+    constructor({controllerFactory, publishMeasurement = () => {}, scheduler}) {
         this.#controllerFactory = controllerFactory;
         this.#publishMeasurement = publishMeasurement;
+        this.#scheduler = scheduler;
     }
 
     get controllers() {
@@ -39,6 +41,7 @@ export class DockIntegration {
             controllerFactory: this.#controllerFactory,
             recipe,
             onMeasured: measurement => this.#publishBudget(measurement),
+            scheduler: this.#scheduler,
         });
         this.#generation++;
         this.#stateChangedId = Main.extensionManager.connect(

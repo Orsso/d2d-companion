@@ -6,11 +6,13 @@ export class MotionSurface {
     #onMeasured;
     #recipe;
     #registry = new LiveRegistry();
+    #scheduler;
 
-    constructor({controllerFactory, recipe, onMeasured = () => {}}) {
+    constructor({controllerFactory, recipe, onMeasured = () => {}, scheduler}) {
         this.#controllerFactory = controllerFactory;
         this.#recipe = recipe;
         this.#onMeasured = onMeasured;
+        this.#scheduler = scheduler;
     }
 
     get controllers() {
@@ -33,7 +35,7 @@ export class MotionSurface {
     }
 
     addBox(box, position) {
-        const group = new NeighborGroup();
+        const group = new NeighborGroup(this.#scheduler);
         let addedId = 0;
         const added = this.#registry.addBox(box, () => {
             if (addedId)
@@ -77,15 +79,22 @@ export class MotionSurface {
 }
 
 class NeighborGroup {
+    #dirty = new Set();
     #entries = [];
+    #flushId = 0;
     #hovered = null;
+    #scheduler;
+
+    constructor(scheduler) {
+        this.#scheduler = scheduler;
+    }
 
     add(controller, container, orderedContainers) {
         this.#entries.push({controller, container});
         this.#entries.sort((first, second) =>
             orderedContainers.indexOf(first.container) -
             orderedContainers.indexOf(second.container));
-        this.#syncNeighbors();
+        this.#scheduleFlush();
     }
 
     remove(controller) {
@@ -96,23 +105,51 @@ class NeighborGroup {
         if (this.#hovered === controller)
             this.#hovered = null;
         // Survivors shift by one index, so their distances change too.
-        this.#syncNeighbors();
+        this.#scheduleFlush();
     }
 
     setHovered(controller, hovered) {
         this.#hovered = hovered ? controller : this.#hovered === controller ? null : this.#hovered;
-        this.#syncNeighbors();
+        // The flip must apply even when the distances are inert.
+        this.#dirty.add(controller);
+        this.#scheduleFlush();
     }
 
     dispose() {
+        this.#cancelFlush();
         this.#hovered = null;
-        this.#syncNeighbors();
         this.#entries = [];
     }
 
     onBoxDestroyed() {
+        this.#cancelFlush();
         this.#hovered = null;
         this.#entries = [];
+    }
+
+    #scheduleFlush() {
+        if (this.#flushId)
+            return;
+        this.#flushId = this.#scheduler.schedule(() => this.#flush());
+    }
+
+    #cancelFlush() {
+        if (!this.#flushId)
+            return;
+        this.#scheduler.cancel(this.#flushId);
+        this.#flushId = 0;
+    }
+
+    // Swap first so changes made while applying get a fresh flush.
+    #flush() {
+        this.#flushId = 0;
+        this.#syncNeighbors();
+        const dirty = this.#dirty;
+        this.#dirty = new Set();
+        for (const {controller} of this.#entries) {
+            if (dirty.has(controller))
+                controller.applyHoverState();
+        }
     }
 
     #syncNeighbors() {
@@ -124,8 +161,9 @@ class NeighborGroup {
                 : Math.abs(index - hoveredIndex);
             // Beyond any possible radius the transform is identity; collapse
             // to Infinity so far icons never see a change to apply.
-            this.#entries[index].controller.setNeighborDistance(
-                distance > NeighborRadius.MAX ? Infinity : distance);
+            if (this.#entries[index].controller.setNeighborDistance(
+                distance > NeighborRadius.MAX ? Infinity : distance))
+                this.#dirty.add(this.#entries[index].controller);
         }
     }
 }

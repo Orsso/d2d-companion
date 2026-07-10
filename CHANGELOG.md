@@ -2,9 +2,9 @@
 
 ## Unreleased
 
-- Fixed fast pointer sweeps creating hundreds of animations that move
-  nothing, felt as lag on some setups (#5). Thanks to @rotntake for the
-  report.
+- Reduced lag during fast pointer sweeps by skipping redundant animations
+  and applying neighbor updates once per frame (#5). Thanks to @rotntake
+  for the report, captures, and testing.
 - Fixed the neighbor hover dropping for an instant when launching an app.
 - Fixed repeated clicks with the Dim press effect fading dock icons out
   for good (#4). Thanks to @rotntake for the report.

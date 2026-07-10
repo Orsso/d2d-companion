@@ -9,11 +9,13 @@ export class DashIntegration {
     #boxDestroyId = 0;
     #controllerFactory;
     #savedClip = false;
+    #scheduler;
     #surface = null;
     #warnings = new Set();
 
-    constructor({controllerFactory}) {
+    constructor({controllerFactory, scheduler}) {
         this.#controllerFactory = controllerFactory;
+        this.#scheduler = scheduler;
     }
 
     get controllers() {
@@ -37,6 +39,7 @@ export class DashIntegration {
         this.#surface = new MotionSurface({
             controllerFactory: this.#controllerFactory,
             recipe,
+            scheduler: this.#scheduler,
         });
         this.#box = box;
         this.#boxDestroyId = box.connect('destroy', () => {

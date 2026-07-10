@@ -22,6 +22,7 @@ const modules = [
     './catalog.test.js',
     './deferredLaunchEnds.test.js',
     './demoSequence.test.js',
+    './hoverSweep.test.js',
     './iconMotionController.test.js',
     './lifecycle.test.js',
     './motionSurface.test.js',
