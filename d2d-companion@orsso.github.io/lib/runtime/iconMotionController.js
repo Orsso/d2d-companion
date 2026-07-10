@@ -109,17 +109,16 @@ export class IconMotionController {
         this.#apply();
     }
 
-    // State only; reports whether the change can alter the transform, so
-    // the group knows to apply this controller at the next flush.
+    // State only; true when the flush must apply this icon.
     setNeighborDistance(distance) {
         if (this.#neighborDistance === distance)
             return false;
-        this.#neighborDistance = distance;
-        // Distance only feeds neighborScaleAt; without a neighbor effect it
-        // cannot change the transform, and neither hover nor launch reads it.
         const {hover} = this.#recipe;
-        return hover.enabled && hover.neighborScale !== 1 &&
-            !this.#hovered && !this.#launching;
+        const visibleChange = hover.enabled &&
+            neighborScaleAt(hover, this.#neighborDistance) !==
+            neighborScaleAt(hover, distance);
+        this.#neighborDistance = distance;
+        return visibleChange && !this.#hovered && !this.#launching;
     }
 
     refreshStyle() {
@@ -187,22 +186,20 @@ export class IconMotionController {
         this.#icon = null;
     }
 
-    // The launch visual owns the bin until endLaunch reapplies; hover flips
-    // keep feeding the group meanwhile.
+    // The launch visual owns the bin until endLaunch reapplies.
     applyHoverState() {
         if (this.#launching)
             return;
         this.#apply();
     }
 
-    // State only: the neighbor group schedules the visual application.
+    // State only: the group schedules the apply.
     #syncHover() {
         const hovered = Boolean(this.#icon.hover);
         if (this.#hovered === hovered)
             return;
         this.#hovered = hovered;
-        // Hover means a reliably allocated icon; let the next apply measure
-        // it once and publish. A hover gone before that apply is worthless.
+        // The next apply measures the hovered icon once and publishes.
         this.#pendingBudgetReport = hovered;
         if (!hovered)
             this.#press.reset();

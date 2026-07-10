@@ -226,6 +226,16 @@ test('setNeighborDistance reports a change without applying it', () => {
     assertEqual(controller.setNeighborDistance(1), false);
 });
 
+test('distance changes with an unchanged visible scale stay quiet', () => {
+    // Distance three is already identity for Expressive's radius of two.
+    const {controller} = makeController('expressive');
+    assertEqual(controller.setNeighborDistance(3), false);
+    assertEqual(controller.setNeighborDistance(2), true);
+    assertEqual(controller.setNeighborDistance(3), true);
+    assertEqual(controller.setNeighborDistance(3), false);
+    assertEqual(controller.setNeighborDistance(Infinity), false);
+});
+
 test('distance changes cannot affect a hovered or launching icon', () => {
     const {controller, icon} = makeController('expressive');
     hoverIcon(icon, true);
