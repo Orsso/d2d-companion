@@ -6,15 +6,16 @@ import Gtk from 'gi://Gtk';
 import {PressMode} from '../motion/catalog.js';
 import {
     buildLaunchSegments,
+    getLaunchPivot,
     interpolateTransform,
     launchDuration,
+    projectHoverTransform,
     resolveIconTransform,
     sampleLaunchSegments,
 } from '../motion/transforms.js';
 import {
     buildDemoSequence,
     buildEffectSequence,
-    DEMO_TEMPO,
     DemoPhase,
     hoverIsActive,
     HOVER_HOLD_MS,
@@ -32,6 +33,7 @@ const IDENTITY = Object.freeze({
     translationY: 0,
     dim: 0,
 });
+const BOTTOM_PIVOT = Object.freeze([0.5, 1]);
 
 const INLINE_ICON_SIZE = 24;
 const INLINE_STEP = INLINE_ICON_SIZE + 10;
@@ -66,6 +68,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._recipe = this._adoptRecipe(recipe);
         this._held = false;
         this._hovered = false;
+        this._hoverProgress = 0;
         this._pressed = false;
         this._launching = false;
         this._pressGeneration = 0;
@@ -117,6 +120,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._launching = false;
         this._recipe = this._adoptRecipe(recipe);
         this._syncIconCount();
+        this._hoverProgress = this._hovered ? 1 : 0;
         this._motionTransform = this._resolveMotion();
         this._launchTransform = {...IDENTITY};
         this.queue_draw();
@@ -175,6 +179,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         this._motionAnimation = null;
         this._launchAnimation = null;
         this._hovered = false;
+        this._hoverProgress = 0;
         this._pressed = false;
         this._launching = false;
         this._motionTransform = {...IDENTITY};
@@ -227,6 +232,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
                         this._sweepAnimation = null;
                         this._sweepActive = false;
                         this._hovered = true;
+                        this._hoverProgress = 0;
                         this._motionTransform = resolveIconTransform({
                             position: 'bottom',
                             recipe: this._recipe,
@@ -317,11 +323,11 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         switch (phase) {
             case DemoPhase.HOVER_IN:
                 this._hovered = true;
-                this._animateMotion(this._hoverMs(), done);
+                this._animateMotion(this._recipe.hover.duration, done);
                 break;
             case DemoPhase.RESET:
                 this._hovered = false;
-                this._animateMotion(this._hoverMs(), done);
+                this._animateMotion(this._recipe.hover.duration, done);
                 break;
             case DemoPhase.HOLD:
                 this._wait(HOVER_HOLD_MS, generation, done);
@@ -352,14 +358,6 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         }
     }
 
-    _hoverMs() {
-        return Math.round(this._recipe.hover.duration * DEMO_TEMPO);
-    }
-
-    _pressMs() {
-        return Math.round(this._recipe.press.duration * DEMO_TEMPO);
-    }
-
     _wait(ms, generation, done) {
         this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
             this._timeoutId = 0;
@@ -371,11 +369,11 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
 
     _demoPlainClick(generation, done) {
         this._pressed = true;
-        this._animateMotion(this._pressMs(), () => {
+        this._animateMotion(this._recipe.press.duration, () => {
             if (!this._loopActive || generation !== this._loopGeneration)
                 return;
             this._pressed = false;
-            this._animateMotion(this._pressMs(), done);
+            this._animateMotion(this._recipe.press.duration, done);
         });
     }
 
@@ -383,7 +381,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         const press = this._recipe.press;
         if (press.enabled && press.mode === PressMode.ALL_PRIMARY_CLICKS) {
             this._pressed = true;
-            this._animateMotion(this._pressMs(), () => {
+            this._animateMotion(press.duration, () => {
                 this._pressed = false;
                 this._beginLaunch({ownsPressFeedback: true, onComplete: done});
             });
@@ -397,9 +395,14 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     _animateMotion(duration, onDone = null, easing = null) {
         const from = this._motionTransform;
         const to = this._resolveMotion();
+        const hoverFrom = this._hoverProgress;
+        const hoverTo = this._hovered ? 1 : 0;
         this._motionAnimation?.reset();
+        this._motionTransform = {...from, dim: to.dim ?? 0};
+        this.queue_draw();
         const target = Adw.CallbackAnimationTarget.new(value => {
-            this._motionTransform = interpolateWithDim(from, to, value);
+            this._hoverProgress = hoverFrom + (hoverTo - hoverFrom) * value;
+            this._motionTransform = interpolateMotionTransform(from, to, value);
             this.queue_draw();
         });
         this._motionAnimation = Adw.TimedAnimation.new(this, 0, 1, duration, target);
@@ -407,6 +410,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
             easing ?? EASINGS[this._recipe.hover.easing] ?? Adw.Easing.EASE_OUT_CUBIC);
         // Settle on the latest recipe; edits may land mid-flight.
         this._motionAnimation.connect('done', () => {
+            this._hoverProgress = hoverTo;
             this._motionTransform = this._resolveMotion();
             this.queue_draw();
             onDone?.();
@@ -417,7 +421,7 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
     _playLaunchPressFeedback(onComplete = null) {
         const generation = ++this._pressGeneration;
         this._pressed = true;
-        this._animateMotion(Math.round(this._pressMs() / 2), () => {
+        this._animateMotion(Math.round(this._recipe.press.duration / 2), () => {
             if (generation !== this._pressGeneration)
                 return;
             this._beginLaunch({ownsPressFeedback: true, onComplete});
@@ -432,10 +436,15 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         }
         this._launching = true;
         this._pressed = false;
-        // Launch starts from the magnified state.
         if (this._recipe.launch.enabled) {
-            this._animateMotion(
-                this._recipe.hover.duration, null, Adw.Easing.EASE_OUT_CUBIC);
+            if (this._effect === 'launch') {
+                this._motionAnimation?.reset();
+                this._motionAnimation = null;
+                this._motionTransform = {...IDENTITY};
+            } else {
+                this._animateMotion(
+                    this._recipe.hover.duration, null, Adw.Easing.EASE_OUT_CUBIC);
+            }
             this._playLaunch(onComplete);
         } else {
             this._animateMotion(this._recipe.hover.duration,
@@ -471,6 +480,11 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
             return;
         }
         this._launching = false;
+        if (this._effect === 'launch') {
+            this._motionTransform = {...IDENTITY};
+            onComplete?.();
+            return;
+        }
         this._animateMotion(this._recipe.hover.duration, onComplete);
     }
 
@@ -509,9 +523,9 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
         const step = (innerRight - innerLeft) / (count - 1);
 
         for (let i = 0; i < count; i++) {
-            const transform = this._iconTransform(i, middle);
+            const transforms = this._iconTransforms(i, middle);
             drawIcon(cr, innerLeft + i * step, iconTop, iconSize,
-                ICON_COLORS[i], transform);
+                ICON_COLORS[i], transforms);
         }
     }
 
@@ -525,19 +539,22 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
             const birth = iconBirth(this._visibleCount, Math.abs(i - middle));
             if (birth === 0)
                 continue;
-            const transform = this._iconTransform(i, middle);
+            const transforms = this._iconTransforms(i, middle);
             const color = ICON_COLORS[
                 (i + colorOffset + ICON_COLORS.length) % ICON_COLORS.length];
             drawIcon(cr, first + i * INLINE_STEP, iconTop, INLINE_ICON_SIZE,
                 color, {
-                    ...transform,
-                    scaleX: transform.scaleX * birth,
-                    scaleY: transform.scaleY * birth,
+                    ...transforms,
+                    motion: {
+                        ...transforms.motion,
+                        scaleX: transforms.motion.scaleX * birth,
+                        scaleY: transforms.motion.scaleY * birth,
+                    },
                 });
         }
     }
 
-    _iconTransform(index, middle) {
+    _iconTransforms(index, middle) {
         if (this._sweepActive) {
             const intensity = Math.max(0, 1 - Math.abs(index - this._sweepValue));
             const hoverFull = resolveIconTransform({
@@ -545,17 +562,32 @@ export const MotionPreview = GObject.registerClass(class MotionPreview extends G
                 recipe: this._recipe,
                 hovered: true,
             });
-            return interpolateTransform(IDENTITY, hoverFull, intensity);
+            return {
+                motion: interpolateTransform(IDENTITY, hoverFull, intensity),
+                launch: IDENTITY,
+                launchPivot: BOTTOM_PIVOT,
+            };
         }
         const distance = Math.abs(index - middle);
-        if (distance === 0)
-            return combineTransforms(this._motionTransform, this._launchTransform);
-        return resolveIconTransform({
-            position: 'bottom',
-            recipe: this._recipe,
-            launching: this._launching,
-            neighborDistance: this._hovered ? distance : Infinity,
-        });
+        if (distance === 0) {
+            return {
+                motion: this._motionTransform,
+                launch: this._launchTransform,
+                launchPivot: this._launching
+                    ? getLaunchPivot(this._recipe.launch.effect, 'bottom')
+                    : BOTTOM_PIVOT,
+            };
+        }
+        return {
+            motion: projectHoverTransform({
+                position: 'bottom',
+                recipe: this._recipe,
+                neighborDistance: distance,
+                progress: this._hoverProgress,
+            }),
+            launch: IDENTITY,
+            launchPivot: BOTTOM_PIVOT,
+        };
     }
 });
 
@@ -589,44 +621,48 @@ function oddCountFor(value) {
     return 2 * Math.ceil((value - 1) / 2) + 1;
 }
 
-function combineTransforms(base, transient) {
-    return {
-        scaleX: base.scaleX * transient.scaleX,
-        scaleY: base.scaleY * transient.scaleY,
-        translationX: base.translationX + transient.translationX,
-        translationY: base.translationY + transient.translationY,
-        dim: base.dim ?? 0,
-    };
-}
-
-// interpolateTransform covers the shared geometry; dim is preview-only.
-function interpolateWithDim(from, to, progress) {
-    const fromDim = from.dim ?? 0;
+function interpolateMotionTransform(from, to, progress) {
     return {
         ...interpolateTransform(from, to, progress),
-        dim: fromDim + ((to.dim ?? 0) - fromDim) * progress,
+        dim: to.dim ?? 0,
     };
 }
 
-function drawIcon(cr, centerX, top, size, color, transform) {
+function drawIcon(cr, centerX, top, size, color, {
+    motion,
+    launch,
+    launchPivot,
+}) {
     const radius = size * 0.28;
     // Scale dock-sized travel to the preview icons.
     const translateScale = size / REFERENCE_ICON_SIZE;
+    const basePivot = motion.pivot ?? BOTTOM_PIVOT;
+    const basePivotX = basePivot[0] * size;
+    const basePivotY = basePivot[1] * size;
+    const pivotX = launchPivot[0] * size;
+    const pivotY = launchPivot[1] * size;
+    const translationX =
+        (motion.translationX + launch.translationX) * translateScale +
+        (motion.scaleX - 1) * (pivotX - basePivotX);
+    const translationY =
+        (motion.translationY + launch.translationY) * translateScale +
+        (motion.scaleY - 1) * (pivotY - basePivotY);
     cr.save();
     cr.translate(
-        centerX + transform.translationX * translateScale,
-        top + size + transform.translationY * translateScale);
-    cr.scale(transform.scaleX, transform.scaleY);
-    roundedRectangle(cr, -size / 2, -size, size, size, radius);
+        centerX - size / 2 + pivotX + translationX,
+        top + pivotY + translationY);
+    cr.scale(motion.scaleX * launch.scaleX, motion.scaleY * launch.scaleY);
+    roundedRectangle(cr, -pivotX, -pivotY, size, size, radius);
     cr.setSourceRGBA(...color, 1);
     cr.fill();
-    roundedRectangle(cr, -size / 2 + 0.5, -size + 0.5, size - 1, size - 1, radius);
+    roundedRectangle(
+        cr, -pivotX + 0.5, -pivotY + 0.5, size - 1, size - 1, radius);
     cr.setSourceRGBA(1, 1, 1, 0.10);
     cr.setLineWidth(1);
     cr.stroke();
-    const dim = transform.dim ?? 0;
+    const dim = motion.dim ?? 0;
     if (dim > 0) {
-        roundedRectangle(cr, -size / 2, -size, size, size, radius);
+        roundedRectangle(cr, -pivotX, -pivotY, size, size, radius);
         cr.setSourceRGBA(0, 0, 0, dim);
         cr.fill();
     }

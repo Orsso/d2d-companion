@@ -10,6 +10,8 @@ import {LaunchEffect} from '../motion/catalog.js';
 import {
     buildLaunchSegments,
     composeIconTransform,
+    dimOpacity,
+    getLaunchPivot,
     getOrientation,
     hoverIntroLift,
     hoverIntroScale,
@@ -23,6 +25,7 @@ import {resolveAnimationMode} from './easing.js';
 const HANDOFF_DURATION = 80;
 const RETREAT_DURATION = 180;
 const RETREAT_SHRINK = 0.85;
+const OPAQUE = 255;
 
 export class LaunchEngine {
     #deferredEnds;
@@ -93,10 +96,8 @@ export class LaunchEngine {
         neutralGeometry, preparation) {
         const recipe = controller.recipe;
         const {hoverDuration, magnify, pressSteps} = preparation;
-        const orientation = getOrientation(controller.position);
-        const launchPivot = recipe.launch.effect === LaunchEffect.PULSE
-            ? [0.5, 0.5]
-            : orientation.pivot;
+        const launchPivot = getLaunchPivot(
+            recipe.launch.effect, controller.position);
         const introScale = hoverIntroScale(visibleGeometry, neutralGeometry);
         const introLift = hoverIntroLift(
             visibleGeometry, neutralGeometry, launchPivot);
@@ -104,7 +105,7 @@ export class LaunchEngine {
             source: target,
             reactive: false,
             ...neutralGeometry,
-            opacity: 255,
+            opacity: OPAQUE,
         });
         clone.set_pivot_point(...launchPivot);
         clone.set_scale(introScale.x, introScale.y);
@@ -163,21 +164,38 @@ export class LaunchEngine {
 
         const recipe = session.controller.recipe;
         const magnify = session.magnifyBase;
-        session.clone.ease({
+        const duration = Math.round(
+            recipe.press.duration * session.pressSteps[index].durationFactor);
+        const mode = resolveAnimationMode(
+            recipe.hover.easing, Clutter.AnimationMode);
+        const onComplete = () => this.#runIntroStep(session, index + 1);
+        session.clone.opacity = dimOpacity(
+            OPAQUE, session.pressTransform.dim);
+        const geometry = {
             scale_x: magnify * session.pressTransform.scaleX,
             scale_y: magnify * session.pressTransform.scaleY,
             translation_x: session.introLift.x,
             translation_y: session.introLift.y,
-            duration: Math.round(
-                recipe.press.duration * session.pressSteps[index].durationFactor),
-            mode: resolveAnimationMode(recipe.hover.easing, Clutter.AnimationMode),
-            onComplete: () => this.#runIntroStep(session, index + 1),
-        });
+            duration,
+            mode,
+        };
+        if (session.pressTransform.dim > 0) {
+            // Use opacity as the timeline when geometry does not change.
+            session.clone.ease(geometry);
+            session.clone.ease_property('opacity', session.clone.opacity, {
+                duration,
+                mode: Clutter.AnimationMode.LINEAR,
+                onComplete,
+            });
+        } else {
+            session.clone.ease({...geometry, onComplete});
+        }
     }
 
     #startEffect(session) {
         if (session.finished)
             return;
+        session.clone.opacity = OPAQUE;
         session.effectStart = GLib.get_monotonic_time() / 1000;
         if (session.controller.recipe.launch.enabled) {
             this.#runCycle(session);

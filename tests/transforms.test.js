@@ -6,7 +6,9 @@ import {
 import {
     buildLaunchSegments,
     composeIconTransform,
+    dimOpacity,
     fitHoverToBudget,
+    getLaunchPivot,
     getOrientation,
     hoverIntroLift,
     hoverIntroScale,
@@ -14,6 +16,7 @@ import {
     launchDuration,
     launchRepeatPause,
     neighborScaleAt,
+    projectHoverTransform,
     resolveIconTransform,
     resolvePressTransform,
     sampleLaunchSegments,
@@ -35,6 +38,16 @@ test('all dock orientations map to the desktop-facing direction', () => {
     assertDeepEqual(getOrientation('top').outward, [0, 1]);
     assertDeepEqual(getOrientation('left').outward, [1, 0]);
     assertDeepEqual(getOrientation('right').outward, [-1, 0]);
+});
+
+test('pulse launches around the icon center', () => {
+    assertDeepEqual(getLaunchPivot(LaunchEffect.PULSE, 'bottom'), [0.5, 0.5]);
+    assertDeepEqual(getLaunchPivot(LaunchEffect.PULSE, 'left'), [0.5, 0.5]);
+});
+
+test('directional launches keep the dock-facing pivot', () => {
+    assertDeepEqual(getLaunchPivot(LaunchEffect.BOUNCE, 'bottom'), [0.5, 1]);
+    assertDeepEqual(getLaunchPivot(LaunchEffect.STRETCH, 'left'), [0, 0.5]);
 });
 
 test('press composition compresses the normal axis on a horizontal dock', () => {
@@ -94,6 +107,12 @@ test('dim press keeps geometry identity and darkens with intensity', () => {
     assertClose(press.translationX, 0);
     assertClose(press.translationY, 0);
     assertClose(press.dim, 0.18);
+});
+
+test('dim opacity is derived from the undimmed opacity', () => {
+    assertEqual(dimOpacity(255, 0.105), 228);
+    assertEqual(dimOpacity(200, 0.18), 164);
+    assertEqual(dimOpacity(255, 0), 255);
 });
 
 test('unknown press effects fall back to squash', () => {
@@ -232,6 +251,32 @@ test('neighbor response uses only the configured neighbor scale', () => {
     assertEqual(transform.scaleX, recipe.hover.neighborScale);
     assertEqual(transform.scaleY, recipe.hover.neighborScale);
     assertEqual(transform.translationY, 0);
+});
+
+test('preview neighbor hover follows one shared progress', () => {
+    const recipe = getBuiltInRecipe('expressive');
+    const start = projectHoverTransform({
+        position: 'bottom',
+        recipe,
+        neighborDistance: 1,
+        progress: 0,
+    });
+    const halfway = projectHoverTransform({
+        position: 'bottom',
+        recipe,
+        neighborDistance: 1,
+        progress: 0.5,
+    });
+    const end = projectHoverTransform({
+        position: 'bottom',
+        recipe,
+        neighborDistance: 1,
+        progress: 1,
+    });
+
+    assertEqual(start.scaleX, 1);
+    assertClose(halfway.scaleX, 1 + (recipe.hover.neighborScale - 1) / 2);
+    assertEqual(end.scaleX, recipe.hover.neighborScale);
 });
 
 test('neighbor falloff is full at distance one and linear outward', () => {

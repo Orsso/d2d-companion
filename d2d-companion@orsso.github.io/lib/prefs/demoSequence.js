@@ -10,9 +10,6 @@ export const NEUTRAL_HOLD_MS = 520;
 export const SWEEP_MS = 1500;
 export const SWEEP_SETTLE_MS = 480;
 
-// Slow the short preview transitions.
-export const DEMO_TEMPO = 1.5;
-
 export const DemoPhase = Object.freeze({
     HOVER_IN: 'hover-in',
     HOLD: 'hold',

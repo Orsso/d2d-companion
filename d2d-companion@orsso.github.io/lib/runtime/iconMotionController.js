@@ -3,7 +3,12 @@ import St from 'gi://St';
 
 import {DockPosition} from '../motion/catalog.js';
 import {PressInteraction} from '../motion/pressInteraction.js';
-import {hoverNeedsBudget, neighborScaleAt, resolveIconTransform} from '../motion/transforms.js';
+import {
+    dimOpacity,
+    hoverNeedsBudget,
+    neighborScaleAt,
+    resolveIconTransform,
+} from '../motion/transforms.js';
 import {resolveAnimationMode} from './easing.js';
 import {refreshWidgetStyle} from './styleRefresh.js';
 
@@ -331,7 +336,7 @@ export class IconMotionController {
                 // Clutter can go offscreen for plain opacity too.
                 this.#bin.offscreen_redirect = 0;
             }
-            this.#bin.opacity = Math.round(this.#original.opacity * (1 - dim));
+            this.#bin.opacity = dimOpacity(this.#original.opacity, dim);
         } else if (this.#dimmed) {
             this.#bin.opacity = this.#original.opacity;
             this.#bin.offscreen_redirect = this.#original.redirect;

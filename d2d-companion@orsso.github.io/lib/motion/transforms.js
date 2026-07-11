@@ -42,6 +42,12 @@ export function getOrientation(position) {
     };
 }
 
+export function getLaunchPivot(effect, position) {
+    return effect === LaunchEffect.PULSE
+        ? [0.5, 0.5]
+        : getOrientation(position).pivot;
+}
+
 // Press effects: (intensity, orientation) → geometry + dim, identity at 0.
 const PRESS_SQUASH_FACTOR = 0.22;
 const PRESS_DIM_FACTOR = 0.30;
@@ -62,6 +68,10 @@ const PRESS_EFFECTS = Object.freeze({
 export function resolvePressTransform(effect, intensity, orientation) {
     const build = PRESS_EFFECTS[effect] ?? PRESS_EFFECTS[PressEffect.SQUASH];
     return build(clamp(intensity, 0, 1), orientation);
+}
+
+export function dimOpacity(opacity, dim) {
+    return Math.round(opacity * (1 - clamp(dim, 0, 1)));
 }
 
 function pressTransform({
@@ -188,6 +198,31 @@ export function resolveIconTransform({
         pressIntensity,
         pressEffect: recipe.press.effect,
     });
+}
+
+export function projectHoverTransform({
+    position = DockPosition.BOTTOM,
+    recipe,
+    hovered = false,
+    neighborDistance = Infinity,
+    progress = 1,
+}) {
+    const target = resolveIconTransform({
+        position,
+        recipe,
+        hovered,
+        neighborDistance,
+    });
+    return {
+        ...interpolateTransform({
+            scaleX: 1,
+            scaleY: 1,
+            translationX: 0,
+            translationY: 0,
+        }, target, clamp(progress, 0, 1)),
+        dim: 0,
+        pivot: target.pivot,
+    };
 }
 
 export function hoverIntroScale(visible, neutral) {

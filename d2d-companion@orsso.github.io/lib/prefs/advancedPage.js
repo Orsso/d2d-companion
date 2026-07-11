@@ -167,6 +167,12 @@ export function syncAdvancedPage(settings, controls, recipe) {
     setComboValue(controls.pressEffect, recipe.press.effect);
     controls.pressIntensity.adjustment.value = recipe.press.intensity;
     controls.pressDuration.value = recipe.press.duration;
+    const instantPrimaryDim = recipe.press.effect === PressEffect.DIM &&
+        recipe.press.mode === PressMode.ALL_PRIMARY_CLICKS;
+    controls.pressDuration.sensitive = !instantPrimaryDim;
+    controls.pressDuration.subtitle = instantPrimaryDim
+        ? 'Dim is instant for primary clicks'
+        : 'ms';
     setComboValue(controls.launchEffect, recipe.launch.effect);
     controls.launchIntensity.adjustment.value = recipe.launch.intensity;
     controls.launchSpeed.adjustment.value = recipe.launch.speed;
