@@ -117,6 +117,10 @@
       <default>true</default>
       <summary>Repeat while starting</summary>
     </key>
+    <key name="custom-launch-soften-repeats" type="b">
+      <default>true</default>
+      <summary>Reduce the intensity of repeated launch cycles</summary>
+    </key>
     <key name="custom-launch-repeat-pause" type="i">
       <default>300</default>
       <range min="0" max="1000"/>

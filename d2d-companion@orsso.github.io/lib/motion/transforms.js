@@ -246,7 +246,9 @@ export function buildLaunchSegments(effect, recipe, position, cycleIndex = 0) {
     const orientation = getOrientation(position);
     const intensity = clamp(recipe.intensity, 0, 1);
     const speed = clamp(recipe.speed, 0.5, 2);
-    const cycleScale = 0.85 ** Math.max(0, cycleIndex);
+    const cycleScale = recipe.softenRepeats === false
+        ? 1
+        : 0.85 ** Math.max(0, cycleIndex);
 
     switch (effect) {
         case LaunchEffect.PULSE:

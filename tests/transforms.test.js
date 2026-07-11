@@ -221,6 +221,18 @@ test('later launch cycles diminish', () => {
     assertEqual(Math.abs(first[0].translationY) > Math.abs(third[0].translationY), true);
 });
 
+test('repeat softening can be disabled', () => {
+    const recipe = {
+        intensity: 1,
+        speed: 1,
+        bounceDecay: 0.6,
+        softenRepeats: false,
+    };
+    const first = buildLaunchSegments(LaunchEffect.BOUNCE, recipe, 'bottom', 0);
+    const third = buildLaunchSegments(LaunchEffect.BOUNCE, recipe, 'bottom', 2);
+    assertDeepEqual(third, first);
+});
+
 test('stock launch effect produces no companion segments', () => {
     assertDeepEqual(buildLaunchSegments(LaunchEffect.STOCK, {
         intensity: 0.6,

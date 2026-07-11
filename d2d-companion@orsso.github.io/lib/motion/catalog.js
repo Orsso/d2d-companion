@@ -44,6 +44,7 @@ export const DEFAULT_PROFILE = Profile.SUBTLE;
 const COMMON_LAUNCH = Object.freeze({
     enabled: true,
     repeat: true,
+    softenRepeats: true,
     repeatPause: 0,
     bounceDecay: 0,
     pulseCount: 2,

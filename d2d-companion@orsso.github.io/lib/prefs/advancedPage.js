@@ -106,6 +106,11 @@ export function buildAdvancedPage(page, controls, editor, state) {
         launch.group, 'Repeat while starting', 'Stop when the application is running');
     connectSwitch(controls.launchRepeat, enabled =>
         editor.edit('custom-launch-repeat', enabled), state);
+    controls.launchSoftenRepeats = createSwitchRow(
+        launch.group, 'Soften repeated cycles',
+        'Reduce the intensity of each repeat');
+    connectSwitch(controls.launchSoftenRepeats, enabled =>
+        editor.edit('custom-launch-soften-repeats', enabled), state);
     controls.launchRepeatPause = createSpinRow(
         launch.group, 'Repeat pause', 0, 1000, 50,
         value => editor.edit('custom-launch-repeat-pause', Math.round(value)),
@@ -177,6 +182,7 @@ export function syncAdvancedPage(settings, controls, recipe) {
     controls.launchIntensity.adjustment.value = recipe.launch.intensity;
     controls.launchSpeed.adjustment.value = recipe.launch.speed;
     controls.launchRepeat.active = recipe.launch.repeat;
+    controls.launchSoftenRepeats.active = recipe.launch.softenRepeats;
     controls.launchRepeatPause.value = recipe.launch.repeatPause;
     controls.launchMaxDuration.value = recipe.launch.maxDuration;
     controls.bounceDecay.adjustment.value = recipe.launch.bounceDecay;
@@ -186,6 +192,7 @@ export function syncAdvancedPage(settings, controls, recipe) {
     controls.launchIntensity.row.visible = !stockLaunch;
     controls.launchSpeed.row.visible = !stockLaunch;
     controls.launchRepeat.visible = !stockLaunch;
+    controls.launchSoftenRepeats.visible = recipe.launch.repeat && !stockLaunch;
     controls.launchRepeatPause.visible = recipe.launch.repeat && !stockLaunch;
     controls.launchMaxDuration.visible = !stockLaunch;
     controls.bounceDecay.row.visible = recipe.launch.effect === LaunchEffect.BOUNCE;

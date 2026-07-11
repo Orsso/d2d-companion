@@ -202,6 +202,14 @@ test('press effect round-trips through custom settings', () => {
     assertEqual(readActiveRecipe(settings).press.effect, 'dim');
 });
 
+test('repeat softening round-trips through custom settings', () => {
+    const settings = new FakeSettings(Profile.BALANCED);
+    editCustomSetting(settings, 'custom-launch-soften-repeats', false);
+    assertEqual(settings.values['motion-profile'], Profile.CUSTOM);
+    assertEqual(settings.values['custom-launch-soften-repeats'], false);
+    assertEqual(readActiveRecipe(settings).launch.softenRepeats, false);
+});
+
 test('settings editor changes profiles and features', () => {
     const settings = new FakeSettings(Profile.EXPRESSIVE);
     const editor = new SettingsEditor(settings);

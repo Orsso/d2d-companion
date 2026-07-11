@@ -64,6 +64,8 @@ export function validateRecipe(recipe = {}) {
             intensity: clamp(source.launch.intensity, 0, 1, fallback.launch.intensity),
             speed: clamp(source.launch.speed, 0.50, 2, fallback.launch.speed),
             repeat: boolean(source.launch.repeat, fallback.launch.repeat),
+            softenRepeats: boolean(
+                source.launch.softenRepeats, fallback.launch.softenRepeats),
             repeatPause: integer(
                 source.launch.repeatPause, 0, 1000, fallback.launch.repeatPause),
             maxDuration: integer(

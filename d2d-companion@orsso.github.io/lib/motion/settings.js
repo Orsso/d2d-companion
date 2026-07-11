@@ -27,6 +27,8 @@ const DEFINITIONS = Object.freeze([
     definition('custom-launch-intensity', 'double', 'launch', 'intensity'),
     definition('custom-launch-speed', 'double', 'launch', 'speed'),
     definition('custom-launch-repeat', 'boolean', 'launch', 'repeat'),
+    definition(
+        'custom-launch-soften-repeats', 'boolean', 'launch', 'softenRepeats'),
     definition('custom-launch-repeat-pause', 'int', 'launch', 'repeatPause'),
     definition('custom-launch-max-duration', 'int', 'launch', 'maxDuration'),
     definition('custom-bounce-decay', 'double', 'launch', 'bounceDecay'),

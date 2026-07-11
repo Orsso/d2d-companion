@@ -30,6 +30,7 @@ test('built-in recipes match the presets', () => {
     assertEqual(subtle.launch.effect, LaunchEffect.BOUNCE);
     assertEqual(subtle.launch.speed, 0.75);
     assertEqual(subtle.launch.repeatPause, 400);
+    assertEqual(subtle.launch.softenRepeats, true);
     assertEqual(balanced.hover.enabled, true);
     assertEqual(balanced.hover.scale, 1.10);
     assertEqual(balanced.press.mode, PressMode.LAUNCHES_ONLY);
@@ -55,9 +56,11 @@ test('unknown profiles resolve to the default preset', () => {
 test('custom profile keeps valid values', () => {
     const custom = customValuesFromRecipe(getBuiltInRecipe(Profile.EXPRESSIVE));
     custom.hover.scale = 1.27;
+    custom.launch.softenRepeats = false;
     const recipe = resolveRecipe(Profile.CUSTOM, custom);
     assertEqual(recipe.id, Profile.CUSTOM);
     assertEqual(recipe.hover.scale, 1.27);
+    assertEqual(recipe.launch.softenRepeats, false);
 });
 
 test('recipe validation clamps values', () => {
@@ -68,6 +71,7 @@ test('recipe validation clamps values', () => {
     invalid.launch.effect = 'invalid';
     invalid.launch.speed = 0;
     invalid.launch.repeatPause = 5000;
+    invalid.launch.softenRepeats = 'invalid';
 
     const recipe = validateRecipe(invalid);
     assertEqual(recipe.hover.scale, 1.30);
@@ -76,6 +80,7 @@ test('recipe validation clamps values', () => {
     assertEqual(recipe.launch.effect, LaunchEffect.BOUNCE);
     assertEqual(recipe.launch.speed, 0.50);
     assertEqual(recipe.launch.repeatPause, 1000);
+    assertEqual(recipe.launch.softenRepeats, true);
 });
 
 test('presets declare their press effects', () => {
