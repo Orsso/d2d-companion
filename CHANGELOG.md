@@ -1,13 +1,16 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.5
 
 - Reduced lag during fast pointer sweeps by skipping redundant animations
-  and applying neighbor updates once per frame (#5). Thanks to @rotntake
+  and applying neighbor updates once per frame (#5). Special thanks to @rotntake
   for the report, captures, and testing.
 - Fixed the neighbor hover dropping for an instant when launching an app.
 - Fixed repeated clicks with the Dim press effect fading dock icons out
   for good (#4). Thanks to @rotntake for the report.
+- Improved timing and motion in the Settings previews.
+- Added an option to keep repeated launch animations at full intensity.
+- Fixed missing Dim feedback when it was limited to app launches.
 
 ## 0.1.0-beta.4
 
